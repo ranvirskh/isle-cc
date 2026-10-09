@@ -30,8 +30,10 @@ final class IslandModel: ObservableObject {
 
     var collapsedSize: CGSize { NotchGeometry.collapsedSize(screen) }
 
+    @Published var theme: IslandTheme = .classic
+
     func expandedSize(for tab: IslandTab) -> CGSize {
-        NotchGeometry.expandedSize(screen, tab: tab == .agents && !agentsEnabled ? .home : tab)
+        theme.adjust(NotchGeometry.expandedSize(screen, tab: tab == .agents && !agentsEnabled ? .home : tab))
     }
 
     var showingDropTargets: Bool { externalDrag && phase == .expanded }

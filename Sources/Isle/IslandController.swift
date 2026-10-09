@@ -49,6 +49,7 @@ final class IslandController {
 
     func start() {
         model.agentsEnabled = settings.agentsEnabled
+        model.theme = settings.theme
         applySettings()
         let panel = IslandPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
@@ -150,6 +151,7 @@ final class IslandController {
     private func updateReduceMotion() { Motion.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
     private func applySettings() {
+        if model.theme != settings.theme { withAnimation(Motion.spring(Motion.tabResize, .tabs)) { model.theme = settings.theme } }
         machine.trigger = settings.expandTrigger
         machine.hoverDelay = Motion.scaled(settings.hoverDelay)
         machine.collapseDelay = Motion.scaled(Motion.collapseDelay)

@@ -36,11 +36,15 @@ final class MediaController: ObservableObject {
     var onSongStarted: ((TrackInfo) -> Void)?
     private var iconCache: [String: NSImage] = [:]
 
+    /// Covers are keyed by title and artist only: the system helper and Spotify / Music scripting disagree about the
+    /// album string and the app id, and a cover must follow the song, not the source that reported it.
+    private func artKey(_ t: TrackInfo) -> String { LyricsNormalizer.fold(t.title) + "\u{1F}" + LyricsNormalizer.fold(t.artist) }
+
     private func remember(_ image: NSImage, for identity: String) {
         if artworkByTrack[identity] == nil { artworkOrder.append(identity) }
         artworkByTrack[identity] = image
         if artworkOrder.count > 30 { artworkByTrack[artworkOrder.removeFirst()] = nil }
-        if now?.track.identity == identity || identity == pendingIdentity { artwork = image }
+        if let t = now?.track, artKey(t) == identity || identity == pendingIdentity { artwork = image }
     }
     private var pendingIdentity: String?
 
@@ -133,14 +137,15 @@ final class MediaController: ObservableObject {
         if let b64 = snap.artworkBase64, let data = Data(base64Encoded: b64), let image = NSImage(data: data) {
             let bundle = snap.track?.bundleID ?? ""
             helperArtwork = (bundle, image)
-            if let id = snap.track?.identity, mode == .system || bundle == scripting?.bundleID {
+            if let t = snap.track, mode == .system || bundle == scripting?.bundleID {
+                let id = artKey(t)
                 pendingIdentity = id
                 remember(image, for: id)
             }
         }
         guard mode == .system else {
             if let spotify = scripting, spotify.bundleID == KnownBundle.spotify, snap.track?.bundleID == spotify.bundleID,
-               let img = helperArtwork?.image { artwork = img }
+               let img = helperArtwork?.image, let t = snap.track, let now, artKey(t) == artKey(now.track) { remember(img, for: artKey(t)) }
             return
         }
         guard let track = snap.track else { setNow(nil); return }
@@ -196,10 +201,10 @@ final class MediaController: ObservableObject {
             scripting?.artworkData { [weak self] data in
                 guard let self, self.now?.track.identity == track.identity, let data, let img = NSImage(data: data) else { return }
                 self.artworkCache = (artID, img)
-                self.remember(img, for: track.identity)
+                self.remember(img, for: self.artKey(track))
             }
-        } else if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, artworkByTrack[track.identity] == nil {
-            remember(img, for: track.identity)
+        } else if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, artworkByTrack[artKey(track)] == nil {
+            remember(img, for: artKey(track))
         }
     }
 
@@ -210,7 +215,7 @@ final class MediaController: ObservableObject {
         let newIdentity = new?.track.identity
         if new != now { now = new }
         if newIdentity != oldIdentity {
-            artwork = newIdentity.flatMap { artworkByTrack[$0] }
+            artwork = new.flatMap { artworkByTrack[artKey($0.track)] }
             if artwork == nil, newIdentity != nil, mode == .system || scripting?.bundleID == KnownBundle.spotify {
                 // The cover normally arrives with the track; if it has not shortly after, ask the helper to resend it.
                 let wanted = newIdentity

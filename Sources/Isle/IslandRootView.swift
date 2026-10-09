@@ -35,6 +35,7 @@ struct IslandRootView: View {
     @EnvironmentObject var model: IslandModel
     @EnvironmentObject var env: AppEnv
     @State private var shownPhase: IslandStateMachine.Phase = .expanded
+    private var style: ThemeStyle { ThemeStyle(theme: model.theme) }
     /// The expanded views stay built (so opening never pays for creating them) but every timeline in them is paused while collapsed.
     @State private var renderContent = true
     @State private var teardown: DispatchWorkItem?
@@ -54,7 +55,8 @@ struct IslandRootView: View {
             Color.clear
             ZStack(alignment: .top) {
                 IslandShape(flare: flare, bottom: bottom)
-                    .fill(Color.black)
+                    .fill(style.background)
+                    .overlay(GlossOverlay(flare: flare, bottom: bottom).opacity(style.hasGloss && model.phase != .collapsed ? 1 : 0))
                     .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.4), radius: 10, x: 0, y: 4)
                 content(size: size)
                 LiveActivityView()
@@ -68,6 +70,7 @@ struct IslandRootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.colorScheme, .dark)
+        .environment(\.themeStyle, style)
         .onChange(of: model.phase) { _, new in
             teardown?.cancel()
             if new != .collapsed {
@@ -170,6 +173,7 @@ struct HeaderView: View {
 }
 
 struct TabButton: View {
+    @Environment(\.themeStyle) private var style
     let tab: IslandTab
     let selected: Bool
     let action: () -> Void
@@ -198,7 +202,7 @@ struct TabButton: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(selected ? Color.white : Color.white.opacity(hover ? 0.85 : 0.5))
                 .frame(width: 32, height: 24)
-                .background(Capsule().fill(Color.white.opacity(selected ? 0.18 : (hover ? 0.08 : 0))))
+                .background(Capsule().fill(selected ? style.selectedTab : Color.white.opacity(hover ? 0.08 : 0)))
         }
         .buttonStyle(PressStyle())
         .help(title)
@@ -502,5 +506,21 @@ final class EqualizerNSView: NSView {
                 bar.transform = CATransform3DMakeScale(1, 0.3, 1)
             }
         }
+    }
+}
+
+/// Frutiger Aero glass: a soft highlight across the top and a thin bright rim.
+struct GlossOverlay: View {
+    let flare: CGFloat
+    let bottom: CGFloat
+    var body: some View {
+        ZStack {
+            IslandShape(flare: flare, bottom: bottom)
+                .fill(LinearGradient(colors: [Color.white.opacity(0.0), Color.white.opacity(0.0), Color.white.opacity(0.16), Color.white.opacity(0.02)],
+                                     startPoint: .top, endPoint: .bottom))
+            IslandShape(flare: flare, bottom: bottom)
+                .stroke(LinearGradient(colors: [Color.white.opacity(0.0), Color.white.opacity(0.45)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+        }
+        .allowsHitTesting(false)
     }
 }

@@ -2,6 +2,7 @@ import SwiftUI
 import IsleCore
 
 struct HomeView: View {
+    @Environment(\.themeStyle) private var style
     @EnvironmentObject var media: MediaController
     @EnvironmentObject var calendar: CalendarController
     @EnvironmentObject var settings: Settings
@@ -10,14 +11,14 @@ struct HomeView: View {
         HStack(alignment: .top, spacing: 16) {
             if let now = media.now {
                 ArtworkView(identity: now.track.identity)
-                    .frame(width: 118, height: 118)
+                    .frame(width: style.theme.artworkSide, height: style.theme.artworkSide)
                 PlayerColumn(now: now)
                     .frame(maxWidth: .infinity)
             } else {
                 EmptyPlayerView()
                     .frame(maxWidth: .infinity)
             }
-            if settings.showCalendar {
+            if settings.showCalendar && style.showsCalendar {
                 Divider().overlay(Color.white.opacity(0.12))
                 AgendaView()
                     .frame(width: 190)
@@ -28,6 +29,7 @@ struct HomeView: View {
 }
 
 struct ArtworkView: View {
+    @Environment(\.themeStyle) private var style
     @EnvironmentObject var media: MediaController
     let identity: String
 
@@ -43,7 +45,7 @@ struct ArtworkView: View {
                     }
                 }
             }
-            .frame(width: 118, height: 118)
+            .frame(width: style.theme.artworkSide, height: style.theme.artworkSide)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .id(media.artwork == nil ? identity : "art-\(identity)")
             .transition(.asymmetric(insertion: .scale(scale: 0.88).combined(with: .opacity), removal: .opacity))
@@ -64,6 +66,7 @@ struct ArtworkView: View {
 }
 
 struct PlayerColumn: View {
+    @Environment(\.themeStyle) private var style
     @EnvironmentObject var media: MediaController
     @EnvironmentObject var settings: Settings
     let now: NowPlaying
@@ -92,7 +95,7 @@ struct PlayerColumn: View {
                 .id("artist-\(now.track.identity)")
                 .transition(.asymmetric(insertion: .offset(y: 8).combined(with: .opacity), removal: .opacity))
             if settings.lyricsEnabled {
-                LyricLineView(font: .system(size: 12, weight: .medium), color: Color(red: 0.55, green: 0.8, blue: 1))
+                LyricLineView(font: .system(size: 12, weight: .medium), color: style.accent)
                     .frame(height: 16)
             }
             Spacer(minLength: 2)
@@ -163,6 +166,7 @@ struct MarqueeText: View {
 }
 
 struct ProgressView_: View {
+    @Environment(\.themeStyle) private var style
     @EnvironmentObject var media: MediaController
     @EnvironmentObject var model: IslandModel
     let now: NowPlaying
@@ -178,7 +182,7 @@ struct ProgressView_: View {
                     let fraction = (duration ?? 0) > 0 ? min(1, max(0, position / (duration ?? 1))) : 0
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.white.opacity(0.18))
-                        Capsule().fill(Color.white.opacity(0.9)).frame(width: max(4, geo.size.width * fraction))
+                        Capsule().fill(style.progressFill).frame(width: max(4, geo.size.width * fraction))
                     }
                     .frame(height: scrub == nil ? 4 : 6)
                     .frame(maxHeight: .infinity)
@@ -195,13 +199,13 @@ struct ProgressView_: View {
                     .animation(Motion.ease(0.12, .media), value: scrub == nil)
                 }
                 .frame(height: 12)
-                HStack {
+                if !style.theme.isCompact { HStack {
                     Text(TimeFormat.clock(position))
                     Spacer()
                     if let d = duration { Text(TimeFormat.remaining(position: position, duration: d)) }
                 }
                 .font(.system(size: 10, weight: .medium).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(.white.opacity(0.5)) }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -211,6 +215,7 @@ struct ProgressView_: View {
 }
 
 struct ControlsRow: View {
+    @Environment(\.themeStyle) private var style
     @EnvironmentObject var media: MediaController
     let now: NowPlaying
 
@@ -232,7 +237,7 @@ struct ControlsRow: View {
     private var shuffle: some View {
         Button { media.toggleShuffle() } label: {
             Image(systemName: "shuffle").font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(now.shuffle == true ? Color(red: 0.55, green: 0.8, blue: 1) : .white.opacity(0.5))
+                .foregroundStyle(now.shuffle == true ? style.accent : .white.opacity(0.5))
         }
         .buttonStyle(PressStyle()).help("Shuffle").accessibilityLabel("Shuffle")
     }

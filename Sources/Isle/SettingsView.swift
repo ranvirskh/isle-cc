@@ -86,6 +86,14 @@ struct SettingsView: View {
                 Toggle("Battery in the header", isOn: binding({ settings.batteryInHeader }, { settings.batteryInHeader = $0 }))
             }
 
+            Section("Look") {
+                Picker("Theme", selection: binding({ settings.theme }, { settings.theme = $0 })) {
+                    ForEach(IslandTheme.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                Text("Minimalistic is smaller and hides the calendar. Frutiger Aero is a glossy aqua glass look.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Animations") {
                 Toggle("Animations", isOn: binding({ settings.animationsEnabled }, { settings.animationsEnabled = $0 }))
                 if settings.animationsEnabled {

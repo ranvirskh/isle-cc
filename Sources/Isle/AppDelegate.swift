@@ -167,6 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                                                   title: "Claude Code finished", subtitle: "isle-cc · 3m 12s"))
                 case "lock": self.lockController.send(.screenLocked)
                 case "unlock": self.lockController.send(.screenUnlocked)
+                case "theme": if let t = arg.flatMap(IslandTheme.init(rawValue:)) { self.env.settings.theme = t }
                 case "day": self.env.calendar.shiftDay(Int(arg ?? "1") ?? 1)
                 case "demo": self.env.media.loadDemo()
                 case "banner": if let t = self.env.media.now?.track { island.songStarted(t) }
