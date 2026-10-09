@@ -36,6 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         env.devices.start()
         env.agents.start()
         island.start()
+        env.privacy.start()
+        env.fullScreen.start { [weak island] in island?.model.screen ?? ScreenInfo(NSScreen.main ?? NSScreen.screens[0]) }
         lockController.start()
         Log.write("lock feature: supported=\(lockController.isSupported) \(lockController.unsupportedReason ?? "")")
         setUpStatusItem()

@@ -94,16 +94,29 @@ final class IslandController {
         updateReduceMotion()
         env.media.$now.map { $0?.isPlaying ?? false }.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
+        env.privacy.$state.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
+        env.fullScreen.$isFullScreen.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         updateLive()
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateReduceMotion() }
         }
     }
 
+    /// Decides what the collapsed island shows. Media (cover, equalizer, song banner) stays quiet while the user is in
+    /// a full-screen Space; the privacy dots do not, because they are about safety rather than music.
     private func updateLive() {
-        let live = settings.liveActivity && (env.media.now?.isPlaying ?? false)
-        guard live != model.liveActive else { return }
-        withAnimation(Motion.spring(Motion.popup, .media)) { model.liveActive = live }
+        let media = settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
+        let privacy = settings.privacyIndicator && env.privacy.state.isActive
+        let live = media || privacy
+        guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive || env.privacy.state != model.privacy else { return }
+        withAnimation(Motion.spring(Motion.popup, .media)) {
+            model.mediaLive = media
+            model.privacyLive = privacy
+            model.privacy = env.privacy.state
+            model.liveActive = live
+        }
     }
 
     private func updateReduceMotion() { Motion.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
@@ -371,7 +384,7 @@ final class IslandController {
 
     /// A new song started: show the banner once its cover has arrived (or after a short wait).
     func songStarted(_ track: TrackInfo) {
-        guard settings.songBanner, machine.phase == .collapsed else { return }
+        guard settings.songBanner, machine.phase == .collapsed, !env.fullScreen.isFullScreen else { return }
         popups.removeAll(kind: .nowPlaying)
         let item = PopupItem(id: "np-" + track.identity, kind: .nowPlaying, symbol: "music.note", title: track.title, subtitle: track.artist)
         DispatchQueue.main.asyncAfter(deadline: .now() + (env.media.artwork == nil ? 0.5 : 0.05)) { [weak self] in

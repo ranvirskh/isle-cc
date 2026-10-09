@@ -115,6 +115,10 @@ final class Settings: ObservableObject {
         get { Set((d.stringArray(forKey: SettingsKey.animationsOff) ?? []).compactMap(Motion.Category.init(rawValue:))) }
         set { set(newValue.map(\.rawValue).sorted(), SettingsKey.animationsOff) }
     }
+    var privacyIndicator: Bool {
+        get { d.bool(forKey: SettingsKey.privacyIndicator) }
+        set { set(newValue, SettingsKey.privacyIndicator) }
+    }
     var liveActivity: Bool {
         get { d.bool(forKey: SettingsKey.liveActivity) }
         set { set(newValue, SettingsKey.liveActivity) }

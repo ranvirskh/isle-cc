@@ -24,6 +24,7 @@ public enum SettingsKey {
     public static let animationPreset = "animationPreset"         // Motion.Preset, default smooth
     public static let animationsEnabled = "animationsEnabled"     // master switch, default true
     public static let animationsOff = "animationsOff"             // [Motion.Category.rawValue] switched off
+    public static let privacyIndicator = "privacyIndicator"       // mic / camera / screen recording dots, default true
     public static let liveActivity = "liveActivity"               // cover + equalizer beside the notch while playing, default true
     public static let songBanner = "songBanner"                   // default true
     public static let lyricsContact = "lyricsContact"             // optional contact appended to the User-Agent
@@ -51,6 +52,7 @@ public enum SettingsKey {
         animationPreset: Motion.Preset.smooth.rawValue,
         animationsEnabled: true,
         animationsOff: [String](),
+        privacyIndicator: true,
         liveActivity: true,
         songBanner: true,
         lyricsContact: "",

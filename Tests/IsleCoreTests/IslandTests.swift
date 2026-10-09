@@ -308,3 +308,47 @@ final class MotionOptionsTests: XCTestCase {
         XCTAssertEqual(q.pending.map(\.id), ["np-b"])
     }
 }
+
+final class PrivacyStateTests: XCTestCase {
+    func testActiveListIsOrderedAndEmptyWhenIdle() {
+        XCTAssertTrue(PrivacyState().active.isEmpty)
+        XCTAssertFalse(PrivacyState().isActive)
+        XCTAssertEqual(PrivacyState(microphone: true, camera: true, screen: true).active, [.camera, .microphone, .screen])
+    }
+
+    func testScreenRecordingNeedsIndicatorWindowsAndNoMicOrCamera() {
+        XCTAssertTrue(ScreenRecordingDetector.isRecording(statusIndicatorWindows: 2, microphone: false, camera: false))
+        XCTAssertFalse(ScreenRecordingDetector.isRecording(statusIndicatorWindows: 0, microphone: false, camera: false))
+        XCTAssertFalse(ScreenRecordingDetector.isRecording(statusIndicatorWindows: 2, microphone: true, camera: false),
+                       "windows may belong to the mic dot, so the screen is not claimed")
+        XCTAssertFalse(ScreenRecordingDetector.isRecording(statusIndicatorWindows: 2, microphone: false, camera: true))
+    }
+
+    func testEveryKindHasASymbolAndTitle() {
+        for k in PrivacyState.Kind.allCases { XCTAssertFalse(k.symbol.isEmpty); XCTAssertFalse(k.title.isEmpty) }
+    }
+}
+
+final class FullScreenDetectorTests: XCTestCase {
+    private let screen = CGRect(x: 0, y: 0, width: 1728, height: 1117)
+
+    private func w(_ pid: Int32, layer: Int = 0, height: CGFloat = 1117, width: CGFloat = 1728) -> FullScreenDetector.Window {
+        .init(ownerPID: pid, layer: layer, frame: CGRect(x: 0, y: 0, width: width, height: height))
+    }
+
+    func testFullHeightWindowOfFrontmostAppIsFullScreen() {
+        XCTAssertTrue(FullScreenDetector.isFullScreen(windows: [w(5)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33))
+    }
+
+    func testWindowBelowTheNotchCountsOnNotchedDisplays() {
+        XCTAssertTrue(FullScreenDetector.isFullScreen(windows: [w(5, height: 1084)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33))
+        XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [w(5, height: 1084)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 0))
+    }
+
+    func testOrdinaryOrOtherAppWindowsAreNotFullScreen() {
+        XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [w(5, height: 900, width: 1400)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33))
+        XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [w(9)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33), "another app's window")
+        XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [w(5, layer: 25)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33), "a menu-bar layer window")
+        XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [w(5)], frontmostPID: nil, screenFrame: screen, safeAreaTop: 33))
+    }
+}

@@ -16,7 +16,15 @@ final class IslandModel: ObservableObject {
     @Published var contentVisible = false
     /// Music is playing: the collapsed island widens to show the cover (left) and an equalizer (right).
     @Published var liveActive = false
-    static let liveSide: CGFloat = 40
+    @Published var mediaLive = false
+    @Published var privacy = PrivacyState()
+    @Published var privacyLive = false
+    /// How far the collapsed island extends past each side of the notch.
+    var liveSide: CGFloat {
+        let icons = CGFloat(privacy.active.count)
+        let right = 12 + icons * 15 + (mediaLive ? 22 : 0)
+        return max(mediaLive ? 40 : 0, privacyLive ? right : 0, 34)
+    }
 
     init(screen: ScreenInfo) { self.screen = screen }
 
@@ -31,7 +39,7 @@ final class IslandModel: ObservableObject {
     var shapeSize: CGSize {
         switch phase {
         case .collapsed:
-            return liveActive ? CGSize(width: collapsedSize.width + 2 * Self.liveSide, height: collapsedSize.height) : collapsedSize
+            return liveActive ? CGSize(width: collapsedSize.width + 2 * liveSide, height: collapsedSize.height) : collapsedSize
         case .popup: return popup?.kind == .nowPlaying ? bannerSize : NotchGeometry.popupContentSize(screen)
         case .expanded: return showingDropTargets ? expandedSize(for: .airdrop) : expandedSize(for: tab)
         }
@@ -77,6 +85,8 @@ final class AppEnv: ObservableObject {
     let calendar = CalendarController()
     let devices = DevicesController()
     let agents = AgentsController()
+    let privacy = PrivacyMonitor()
+    let fullScreen = FullScreenMonitor()
     let shelf = ShelfController()
     let settings = Settings.shared
     var island: IslandController!

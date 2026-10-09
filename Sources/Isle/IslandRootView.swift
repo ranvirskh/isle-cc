@@ -159,6 +159,7 @@ struct HeaderView: View {
                     .background(Capsule().fill(Color.white.opacity(0.12)))
             }
             HeaderIconButton(symbol: "gearshape.fill", help: "Settings") { AppDelegate.shared.showSettings() }
+            if settings.privacyIndicator { PrivacyDots(state: model.privacy) }
             if settings.batteryInHeader, devices.battery.hasBattery { BatteryChip(state: devices.battery) }
         }
         .padding(.horizontal, flare + 14)
@@ -378,7 +379,7 @@ struct NowPlayingBanner: View {
     }
 }
 
-/// Collapsed "live activity": cover on the left of the notch, equalizer on the right, only while playing.
+/// Collapsed "live activity": cover on the left of the notch, equalizer and privacy dots on the right.
 struct LiveActivityView: View {
     @EnvironmentObject var model: IslandModel
     @EnvironmentObject var media: MediaController
@@ -386,24 +387,58 @@ struct LiveActivityView: View {
     var body: some View {
         HStack(spacing: 0) {
             Group {
-                if let image = media.artwork {
-                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    ZStack { Color.white.opacity(0.15); Image(systemName: "music.note").font(.system(size: 10)).foregroundStyle(.white.opacity(0.6)) }
+                if model.mediaLive {
+                    Group {
+                        if let image = media.artwork {
+                            Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                        } else {
+                            ZStack { Color.white.opacity(0.15); Image(systemName: "music.note").font(.system(size: 10)).foregroundStyle(.white.opacity(0.6)) }
+                        }
+                    }
+                    .frame(width: 22, height: 22)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .id(media.now?.track.identity ?? "none")
                 }
             }
-            .frame(width: 22, height: 22)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .id(media.now?.track.identity ?? "none")
-            .transition(.opacity)
-            .frame(width: IslandModel.liveSide, alignment: .center)
+            .frame(width: model.liveSide, alignment: .center)
             Spacer(minLength: 0)
-            EqualizerView(active: media.now?.isPlaying ?? false && model.liveActive && model.phase == .collapsed)
-                .frame(width: IslandModel.liveSide, alignment: .center)
+            HStack(spacing: 5) {
+                PrivacyDots(state: model.privacy)
+                if model.mediaLive {
+                    EqualizerView(active: (media.now?.isPlaying ?? false) && model.phase == .collapsed)
+                        .frame(width: 14)
+                }
+            }
+            .frame(width: model.liveSide, alignment: .center)
         }
         .frame(maxHeight: .infinity)
         .padding(.bottom, model.isNotched ? 2 : 0)
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(model.privacy.active.map(\.title).joined(separator: ", "))
+    }
+}
+
+/// Orange microphone, green camera, purple screen recording. Display only.
+struct PrivacyDots: View {
+    let state: PrivacyState
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(state.active, id: \.self) { kind in
+                Image(systemName: kind.symbol)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(color(kind))
+                    .transition(.scale.combined(with: .opacity))
+                    .help(kind.title)
+            }
+        }
+        .animation(Motion.spring(Motion.popup, .media), value: state)
+    }
+    private func color(_ k: PrivacyState.Kind) -> Color {
+        switch k {
+        case .microphone: return Color(red: 1.0, green: 0.62, blue: 0.2)
+        case .camera: return Color(red: 0.3, green: 0.85, blue: 0.4)
+        case .screen: return Color(red: 0.7, green: 0.45, blue: 1.0)
+        }
     }
 }
 
