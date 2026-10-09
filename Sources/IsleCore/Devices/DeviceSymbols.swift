@@ -162,6 +162,14 @@ public enum BluetoothProfilerParser {
         public var productID: Int?
         public var hasCase: Bool
         public var connected: Bool
+        public var battery: DeviceBattery?
+    }
+
+    private static func batteryLevels(_ props: [String: Any]) -> DeviceBattery? {
+        let b = DeviceBattery(left: percent(props["device_batteryLevelLeft"]), right: percent(props["device_batteryLevelRight"]),
+                              caseLevel: percent(props["device_batteryLevelCase"]),
+                              main: percent(props["device_batteryLevelMain"]) ?? percent(props["device_batteryLevel"]))
+        return b.isEmpty ? nil : b
     }
 
     private static func hex(_ v: Any?) -> Int? {
@@ -183,7 +191,8 @@ public enum BluetoothProfilerParser {
                         guard let props = raw as? [String: Any], let address = Loose.string(props["device_address"]) else { continue }
                         out[normalize(address: address)] = DeviceInfo(
                             name: name, vendorID: hex(props["device_vendorID"]), productID: hex(props["device_productID"]),
-                            hasCase: props["device_batteryLevelCase"] != nil, connected: key == "device_connected")
+                            hasCase: props["device_batteryLevelCase"] != nil, connected: key == "device_connected",
+                            battery: batteryLevels(props))
                     }
                 }
             }

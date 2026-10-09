@@ -41,6 +41,10 @@ final class MediaController: ObservableObject {
     /// album string and the app id, and a cover must follow the song, not the source that reported it.
     private func artKey(_ t: TrackInfo) -> String { LyricsNormalizer.fold(t.title) + "\u{1F}" + LyricsNormalizer.fold(t.artist) }
 
+    /// Title alone, for matching a cover sent by the system helper to the track Spotify reports: the two disagree about
+    /// how artists are written ("A, B" vs "A"), but a cover from another song never shares the title.
+    private func titleKey(_ t: TrackInfo) -> String { LyricsNormalizer.fold(t.title) }
+
     private func remember(_ image: NSImage, for identity: String) {
         if artworkByTrack[identity] == nil { artworkOrder.append(identity) }
         artworkByTrack[identity] = image
@@ -137,7 +141,7 @@ final class MediaController: ObservableObject {
         // Artwork from the helper is kept per app, so Spotify mode can use it without a network fetch.
         if let b64 = snap.artworkBase64, let data = Data(base64Encoded: b64), let image = NSImage(data: data) {
             let bundle = snap.track?.bundleID ?? ""
-            helperArtwork = (bundle, snap.track.map { artKey($0) }, image)
+            helperArtwork = (bundle, snap.track.map { titleKey($0) }, image)
             if let t = snap.track, mode == .system || bundle == scripting?.bundleID {
                 let id = artKey(t)
                 pendingIdentity = id
@@ -146,7 +150,7 @@ final class MediaController: ObservableObject {
         }
         guard mode == .system else {
             if let spotify = scripting, spotify.bundleID == KnownBundle.spotify, snap.track?.bundleID == spotify.bundleID,
-               let img = helperArtwork?.image, let t = snap.track, let now, artKey(t) == artKey(now.track) { remember(img, for: artKey(t)) }
+               let img = helperArtwork?.image, let t = snap.track, let now, titleKey(t) == titleKey(now.track) { remember(img, for: artKey(now.track)) }
             return
         }
         guard let track = snap.track else { setNow(nil); return }
@@ -204,7 +208,7 @@ final class MediaController: ObservableObject {
                 self.artworkCache = (artID, img)
                 self.remember(img, for: self.artKey(track))
             }
-        } else if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, helperArtwork?.key == artKey(track), artworkByTrack[artKey(track)] == nil {
+        } else if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, helperArtwork?.key == titleKey(track), artworkByTrack[artKey(track)] == nil {
             remember(img, for: artKey(track))
         }
     }

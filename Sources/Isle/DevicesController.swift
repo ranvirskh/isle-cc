@@ -47,6 +47,8 @@ final class DevicesController: ObservableObject {
     private var psSource: CFRunLoopSource?
     private var lastOnAC: Bool?
     private var registeredAt = Date()
+    /// Addresses already seen connected, so a connect event with no usable address can be matched to the one new device.
+    private var seenConnected: Set<String> = []
 
     func start() {
         readBattery()
@@ -62,6 +64,7 @@ final class DevicesController: ObservableObject {
             CFRunLoopAddSource(CFRunLoopGetMain(), src, .defaultMode)
         }
         registeredAt = Date()
+        profile(address: "") { [weak self] _, _, all in self?.seenConnected = Set(all.filter { $0.value.connected }.keys) }
         connectNotification = IOBluetoothDevice.register(forConnectNotifications: self, selector: #selector(deviceConnected(_:device:)))
     }
 
@@ -111,6 +114,7 @@ final class DevicesController: ObservableObject {
         let knownName = device.name.flatMap { $0.isEmpty ? nil : $0 }
         // The name, model and battery levels show up in the profiler a moment after the connection is made, so look
         // again a couple of times if the device is not listed yet.
+        Log.write("bluetooth: connect event name \(knownName ?? "nil") address \(address.isEmpty ? "none" : "present")")
         resolve(address: address, knownName: knownName, attempt: 0, delays: [1.5, 3.0, 5.0]) { [weak self] info, battery in
             let name = knownName ?? info?.name ?? IOBluetoothDevice(addressString: address)?.nameOrAddress ?? "Bluetooth device"
             let lowered = name.lowercased()
@@ -130,18 +134,28 @@ final class DevicesController: ObservableObject {
     private func resolve(address: String, knownName: String?, attempt: Int, delays: [Double],
                          _ done: @escaping @MainActor (BluetoothProfilerParser.DeviceInfo?, DeviceBattery?) -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + delays[attempt]) { [weak self] in
-            self?.profile(address: address) { info, battery in
-                // Done once the device is listed as connected with a battery (or we ran out of tries).
-                if (info?.connected == true && battery != nil) || attempt + 1 >= delays.count {
+            self?.profile(address: address) { info, battery, all in
+                guard let self else { return }
+                var info = info, battery = battery
+                // No usable address (or not listed under it): the one device that is connected now and was not before.
+                if info == nil {
+                    let fresh = all.filter { $0.value.connected && !self.seenConnected.contains($0.key) }
+                    if fresh.count == 1, let match = fresh.first {
+                        info = match.value
+                        battery = match.value.battery
+                    }
+                }
+                if (info?.connected == true) || attempt + 1 >= delays.count {
+                    if let key = info.flatMap({ i in all.first(where: { $0.value == i })?.key }) { self.seenConnected.insert(key) }
                     done(info, battery)
                 } else {
-                    self?.resolve(address: address, knownName: knownName, attempt: attempt + 1, delays: delays, done)
+                    self.resolve(address: address, knownName: knownName, attempt: attempt + 1, delays: delays, done)
                 }
             }
         }
     }
 
-    private func profile(address: String, _ done: @escaping @MainActor (BluetoothProfilerParser.DeviceInfo?, DeviceBattery?) -> Void) {
+    private func profile(address: String, _ done: @escaping @MainActor (BluetoothProfilerParser.DeviceInfo?, DeviceBattery?, [String: BluetoothProfilerParser.DeviceInfo]) -> Void) {
         DispatchQueue.global(qos: .utility).async {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
@@ -151,17 +165,19 @@ final class DevicesController: ObservableObject {
             p.standardError = FileHandle.nullDevice
             var info: BluetoothProfilerParser.DeviceInfo?
             var battery: DeviceBattery?
+            var all: [String: BluetoothProfilerParser.DeviceInfo] = [:]
             do {
                 try p.run()
                 let data = out.fileHandleForReading.readDataToEndOfFile()
                 p.waitUntilExit()
                 let key = BluetoothProfilerParser.normalize(address: address)
-                info = BluetoothProfilerParser.devices(data)[key]
+                all = BluetoothProfilerParser.devices(data)
+                info = all[key]
                 battery = BluetoothProfilerParser.parse(data).byAddress[key]
             } catch {
                 Log.write("system_profiler failed: \(error.localizedDescription)")
             }
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(info, battery) } }
+            DispatchQueue.main.async { MainActor.assumeIsolated { done(info, battery, all) } }
         }
     }
 }
