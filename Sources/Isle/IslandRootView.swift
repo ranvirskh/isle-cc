@@ -348,6 +348,7 @@ struct BatteryReadout: View {
         VStack(spacing: 2) {
             Text("\(reading.percent)%")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .lineLimit(1).fixedSize()
                 .foregroundStyle(reading.percent <= 20 ? Color.red : Color.white)
             if !reading.label.isEmpty {
                 Text(reading.label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.5))

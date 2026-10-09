@@ -49,6 +49,9 @@ final class DevicesController: ObservableObject {
     private var registeredAt = Date()
     /// Addresses already seen connected, so a connect event with no usable address can be matched to the one new device.
     private var seenConnected: Set<String> = []
+    /// One pop-up per device per connection: AirPods raise several connect events (one per audio profile).
+    private var lastPopup: [String: Date] = [:]
+    private var lastAnyPopup = Date.distantPast
 
     func start() {
         readBattery()
@@ -112,6 +115,15 @@ final class DevicesController: ObservableObject {
         let address = device.addressString ?? ""
         let kind = DeviceSymbols.kind(majorClass: major, minorClass: Int(device.deviceClassMinor))
         let knownName = device.name.flatMap { $0.isEmpty ? nil : $0 }
+        let eventKey = address.isEmpty ? "" : BluetoothProfilerParser.normalize(address: address)
+        let now = Date()
+        if eventKey.isEmpty {
+            // An event with no address can only be matched by elimination; skip it right after a pop-up for the same connection.
+            if now.timeIntervalSince(lastAnyPopup) < 20 { return }
+        } else {
+            if let last = lastPopup[eventKey], now.timeIntervalSince(last) < 20 { return }
+            lastPopup[eventKey] = now
+        }
         // The name, model and battery levels show up in the profiler a moment after the connection is made, so look
         // again a couple of times if the device is not listed yet.
         Log.write("bluetooth: connect event name \(knownName ?? "nil") address \(address.isEmpty ? "none" : "present")")
@@ -123,6 +135,12 @@ final class DevicesController: ObservableObject {
             let model = DeviceSymbols.appleAudioName(vendorID: info?.vendorID, productID: info?.productID, hasCase: info?.hasCase ?? false)
             let symbolName = model ?? name
             let symbol = DeviceSymbols.firstAvailable(name: symbolName, kind: kind)
+            // Events for one connection resolve at about the same moment; only the first gets a pop-up.
+            let shownKey = (eventKey.isEmpty ? name : eventKey) + "#shown"
+            if let last = self?.lastPopup[shownKey], Date().timeIntervalSince(last) < 20 { return }
+            if let self, Date().timeIntervalSince(self.lastAnyPopup) < 4 { return }
+            self?.lastPopup[shownKey] = Date()
+            self?.lastAnyPopup = Date()
             Log.write("bluetooth: connected \(name) model \(model ?? "-") vendor \(info?.vendorID.map { String($0, radix: 16) } ?? "-")")
             let item = PopupItem(id: "bt-\(BluetoothProfilerParser.normalize(address: address.isEmpty ? name : address))", kind: .bluetoothDevice,
                                  symbol: symbol, title: name, subtitle: battery == nil ? (model ?? "Connected") : "",
