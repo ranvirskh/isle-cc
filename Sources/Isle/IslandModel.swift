@@ -21,10 +21,10 @@ final class IslandModel: ObservableObject {
     @Published var privacyLive = false
     /// How far the collapsed island extends past each side of the notch.
     var liveSide: CGFloat {
-        let icons = CGFloat(privacy.active.count)
-        let right = 12 + icons * 15 + (mediaLive ? 22 : 0)
-        return max(mediaLive ? 40 : 0, privacyLive ? right : 0, 34)
+        LiveLayout.side(mediaLive: mediaLive, privacyIcons: privacyLive ? privacy.active.count : 0, chargingLive: chargingLive)
     }
+    @Published var chargingLive = false
+    @Published var battery = BatteryState(percent: nil, isCharging: false, onAC: false, hasBattery: false)
 
     init(screen: ScreenInfo) { self.screen = screen }
 

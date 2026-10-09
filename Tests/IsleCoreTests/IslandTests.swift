@@ -352,3 +352,28 @@ final class FullScreenDetectorTests: XCTestCase {
         XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [w(5)], frontmostPID: nil, screenFrame: screen, safeAreaTop: 33))
     }
 }
+
+final class LiveLayoutTests: XCTestCase {
+    func testNothingLiveUsesTheMinimumSide() {
+        XCTAssertEqual(LiveLayout.side(mediaLive: false, privacyIcons: 0, chargingLive: false), LiveLayout.minimumSide)
+    }
+
+    func testMediaUsesTheCoverSide() {
+        XCTAssertEqual(LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false), 40)
+    }
+
+    func testPrivacyIconsWidenTheIsland() {
+        XCTAssertGreaterThan(LiveLayout.side(mediaLive: true, privacyIcons: 3, chargingLive: false),
+                             LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false))
+    }
+
+    func testChargingTextYieldsToTheEqualizer() {
+        let withMusic = LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: true)
+        XCTAssertEqual(withMusic, LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false))
+        XCTAssertGreaterThanOrEqual(LiveLayout.side(mediaLive: false, privacyIcons: 0, chargingLive: true), LiveLayout.minimumSide)
+    }
+
+    func testChargingModeRoundTrips() {
+        for m in ChargingIndicatorMode.allCases { XCTAssertEqual(ChargingIndicatorMode(rawValue: m.rawValue), m) }
+    }
+}

@@ -34,6 +34,9 @@ final class IslandController {
     private var ownDragPoll: Timer?
     private var currentScreenID: CGDirectDisplayID?
     private var cancellables = Set<AnyCancellable>()
+    private var chargingBrief = false
+    private var chargingBriefWork: DispatchWorkItem?
+    private var wasCharging = false
 
     init(env: AppEnv) {
         self.env = env
@@ -94,6 +97,8 @@ final class IslandController {
         updateReduceMotion()
         env.media.$now.map { $0?.isPlaying ?? false }.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
+        env.devices.$battery.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] b in MainActor.assumeIsolated { self?.batteryChanged(b) } }.store(in: &cancellables)
         env.privacy.$state.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.fullScreen.$isFullScreen.removeDuplicates().receive(on: DispatchQueue.main)
@@ -109,14 +114,37 @@ final class IslandController {
     private func updateLive() {
         let media = settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
         let privacy = settings.privacyIndicator && env.privacy.state.isActive
-        let live = media || privacy
-        guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive || env.privacy.state != model.privacy else { return }
+        let battery = env.devices.battery
+        var charging = false
+        switch settings.chargingIndicator {
+        case .off: charging = false
+        case .whileCharging: charging = battery.hasBattery && battery.isCharging
+        case .brief: charging = chargingBrief && battery.isCharging
+        }
+        let live = media || privacy || charging
+        guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
+                || env.privacy.state != model.privacy || charging != model.chargingLive || battery != model.battery else { return }
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
             model.privacyLive = privacy
+            model.chargingLive = charging
+            model.battery = battery
             model.privacy = env.privacy.state
             model.liveActive = live
         }
+    }
+
+    private func batteryChanged(_ b: BatteryState) {
+        if b.isCharging && !wasCharging {
+            // Plugged in: the brief mode shows the indicator for a few seconds.
+            chargingBrief = true
+            chargingBriefWork?.cancel()
+            let w = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.chargingBrief = false; self?.updateLive() } }
+            chargingBriefWork = w
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: w)
+        }
+        wasCharging = b.isCharging
+        updateLive()
     }
 
     private func updateReduceMotion() { Motion.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }

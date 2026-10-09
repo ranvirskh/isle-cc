@@ -387,7 +387,9 @@ struct LiveActivityView: View {
     var body: some View {
         HStack(spacing: 0) {
             Group {
-                if model.mediaLive {
+                if !model.mediaLive, model.chargingLive {
+                    Image(systemName: "bolt.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(Color(red: 0.35, green: 0.9, blue: 0.5))
+                } else if model.mediaLive {
                     Group {
                         if let image = media.artwork {
                             Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
@@ -404,6 +406,9 @@ struct LiveActivityView: View {
             Spacer(minLength: 0)
             HStack(spacing: 5) {
                 PrivacyDots(state: model.privacy)
+                if !model.mediaLive, model.chargingLive, let p = model.battery.percent {
+                    Text("\(p)%").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(.white.opacity(0.9))
+                }
                 if model.mediaLive {
                     EqualizerView(active: (media.now?.isPlaying ?? false) && model.phase == .collapsed)
                         .frame(width: 14)
@@ -414,7 +419,7 @@ struct LiveActivityView: View {
         .frame(maxHeight: .infinity)
         .padding(.bottom, model.isNotched ? 2 : 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(model.privacy.active.map(\.title).joined(separator: ", "))
+        .accessibilityLabel((model.privacy.active.map(\.title) + (model.chargingLive ? ["Charging \(model.battery.percent ?? 0) percent"] : [])).joined(separator: ", "))
     }
 }
 

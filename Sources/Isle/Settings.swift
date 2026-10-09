@@ -115,6 +115,10 @@ final class Settings: ObservableObject {
         get { Set((d.stringArray(forKey: SettingsKey.animationsOff) ?? []).compactMap(Motion.Category.init(rawValue:))) }
         set { set(newValue.map(\.rawValue).sorted(), SettingsKey.animationsOff) }
     }
+    var chargingIndicator: ChargingIndicatorMode {
+        get { ChargingIndicatorMode(rawValue: d.string(forKey: SettingsKey.chargingIndicator) ?? "") ?? .whileCharging }
+        set { set(newValue.rawValue, SettingsKey.chargingIndicator) }
+    }
     var privacyIndicator: Bool {
         get { d.bool(forKey: SettingsKey.privacyIndicator) }
         set { set(newValue, SettingsKey.privacyIndicator) }
