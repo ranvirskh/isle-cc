@@ -90,7 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func setUpStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "capsule.fill", accessibilityDescription: "Isle")
+        statusItem.button?.image = Self.palmTreeImage()
         let menu = NSMenu()
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
@@ -189,5 +189,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }
         }
+    }
+
+    /// A palm tree silhouette drawn as a template image, so it follows the menu bar's light and dark appearance.
+    private static func palmTreeImage() -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+            NSColor.black.setStroke()
+            NSColor.black.setFill()
+            let top = NSPoint(x: 10.5, y: 12)
+            let trunk = NSBezierPath()
+            trunk.move(to: NSPoint(x: 8, y: 2))
+            trunk.curve(to: top, controlPoint1: NSPoint(x: 7.5, y: 6), controlPoint2: NSPoint(x: 9.5, y: 9.5))
+            trunk.lineWidth = 1.8; trunk.lineCapStyle = .round; trunk.stroke()
+            for (dx, dy) in [(-6.5, -2.5), (-4.0, 1.5), (0.0, 3.5), (4.5, 1.8), (6.5, -2.0)] as [(CGFloat, CGFloat)] {
+                let end = NSPoint(x: top.x + dx, y: top.y + dy)
+                let frond = NSBezierPath()
+                frond.move(to: top)
+                frond.curve(to: end, controlPoint1: NSPoint(x: top.x + dx * 0.4, y: top.y + dy + 3), controlPoint2: NSPoint(x: top.x + dx * 0.8, y: top.y + dy + 2))
+                frond.lineWidth = 1.7; frond.lineCapStyle = .round; frond.stroke()
+            }
+            NSBezierPath(ovalIn: NSRect(x: 9.2, y: 10.0, width: 2.4, height: 2.4)).fill()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "Isle"
+        return image
     }
 }
