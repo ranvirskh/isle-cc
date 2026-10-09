@@ -341,3 +341,27 @@ final class AgendaDayNavigationTests: XCTestCase {
         XCTAssertTrue(a.rows.isEmpty)
     }
 }
+
+final class BluetoothConnectedParserTests: XCTestCase {
+    func testOnlyConnectedDevicesWithBatteriesAreListed() {
+        let json = #"""
+        {"SPBluetoothDataType":[{
+          "device_connected":[
+            {"AirPods Pro":{"device_address":"AA-BB","device_batteryLevelLeft":"80%","device_batteryLevelRight":"78%","device_batteryLevelCase":"64%"}},
+            {"Magic Keyboard":{"device_address":"CC-DD","device_batteryLevel":"55%"}},
+            {"Speaker":{"device_address":"EE-FF"}}
+          ],
+          "device_not_connected":[{"Old Mouse":{"device_batteryLevel":"12%"}}]
+        }]}
+        """#
+        let list = BluetoothProfilerParser.parseConnected(Data(json.utf8))
+        XCTAssertEqual(list.map(\.name), ["AirPods Pro", "Magic Keyboard"])
+        XCTAssertEqual(list.first?.battery.left, 80)
+        XCTAssertEqual(list.last?.battery.main, 55)
+    }
+
+    func testGarbageYieldsNothing() {
+        XCTAssertTrue(BluetoothProfilerParser.parseConnected(Data("nope".utf8)).isEmpty)
+        XCTAssertTrue(BluetoothProfilerParser.parseConnected(Data("{}".utf8)).isEmpty)
+    }
+}

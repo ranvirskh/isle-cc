@@ -25,6 +25,13 @@ Off by default. Third-party windows cannot normally appear on the lock screen, s
 ## AI agents (privacy)
 Off by default. Reads only local metadata from Claude Code, Codex, OpenCode and Copilot session files: timestamps, model names, token counts, project folder name, session id. Never prompt text, responses, file contents or tool output. No network access. Plan limits appear only when the agent itself reports them (Codex logs them); otherwise "Limit data not available".
 
+## Extra live activities and widgets
+- **Cover and equalizer** beside the notch while playing; **mic / camera / screen-recording dots** (read from system signals, no content); **charging** readout; **browser downloads** (watches ~/Downloads for partial-file names and sizes only; macOS asks for Files and Folders access).
+- **Full screen:** while the frontmost app is in a full-screen Space, the cover, equalizer and song banner stay off.
+- **Weather** (opt-in): sends the city you type, then its coordinates, to Open-Meteo (open-meteo.com, free, no key, no location permission; "Weather data by Open-Meteo.com"). Nothing is sent while off.
+- **Lock screen widgets** (opt-in): weather, charging and connected Bluetooth batteries, display only, same private-API caveat as the lock card.
+- **Themes:** Classic, Minimalistic, Frutiger Aero (Settings > Look).
+
 ## Animations
 Settings > Animations: master switch, style (Smooth / Snappy / Bouncy / Minimal), speed, and a switch for each group (island opening, content fade, tabs, artwork/media, lyrics, banner flip, button press). Reduce Motion is respected. All timings live in `Sources/IsleCore/Motion.swift`.
 

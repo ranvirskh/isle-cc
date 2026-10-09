@@ -64,6 +64,18 @@ struct SettingsView: View {
                     .disabled(!settings.lockScreenEnabled || !settings.lyricsEnabled)
             }
 
+            Section("Lock screen widgets") {
+                Toggle("Show status widgets on the lock screen", isOn: binding({ settings.lockWidgets }, { settings.lockWidgets = $0 }))
+                    .disabled(!(env.lock?.isSupported ?? false))
+                Text("Weather, charging and connected Bluetooth devices appear near the bottom of the lock screen, display only. Anyone who can see the screen can see them.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if settings.lockWidgets {
+                    Toggle("Weather (needs Weather turned on below)", isOn: binding({ settings.lockWidgetWeather }, { settings.lockWidgetWeather = $0 }))
+                    Toggle("Charging and battery", isOn: binding({ settings.lockWidgetCharging }, { settings.lockWidgetCharging = $0 }))
+                    Toggle("Bluetooth device batteries", isOn: binding({ settings.lockWidgetBluetooth }, { settings.lockWidgetBluetooth = $0 }))
+                }
+            }
+
             Section("Island") {
                 Picker("Open on", selection: binding({ settings.expandTrigger }, { settings.expandTrigger = $0 })) {
                     Text("Hover").tag(ExpandTrigger.hover)

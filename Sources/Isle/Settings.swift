@@ -115,6 +115,22 @@ final class Settings: ObservableObject {
         get { Set((d.stringArray(forKey: SettingsKey.animationsOff) ?? []).compactMap(Motion.Category.init(rawValue:))) }
         set { set(newValue.map(\.rawValue).sorted(), SettingsKey.animationsOff) }
     }
+    var lockWidgets: Bool {
+        get { d.bool(forKey: SettingsKey.lockWidgets) }
+        set { set(newValue, SettingsKey.lockWidgets) }
+    }
+    var lockWidgetWeather: Bool {
+        get { d.bool(forKey: SettingsKey.lockWidgetWeather) }
+        set { set(newValue, SettingsKey.lockWidgetWeather) }
+    }
+    var lockWidgetCharging: Bool {
+        get { d.bool(forKey: SettingsKey.lockWidgetCharging) }
+        set { set(newValue, SettingsKey.lockWidgetCharging) }
+    }
+    var lockWidgetBluetooth: Bool {
+        get { d.bool(forKey: SettingsKey.lockWidgetBluetooth) }
+        set { set(newValue, SettingsKey.lockWidgetBluetooth) }
+    }
     var weatherEnabled: Bool {
         get { d.bool(forKey: SettingsKey.weatherEnabled) }
         set { set(newValue, SettingsKey.weatherEnabled) }

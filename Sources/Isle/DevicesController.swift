@@ -15,6 +15,32 @@ struct BatteryState: Equatable {
 final class DevicesController: ObservableObject {
     @Published private(set) var battery = BatteryState(percent: nil, isCharging: false, onAC: false, hasBattery: false)
     var onPopup: ((PopupItem) -> Void)?
+    /// Connected Bluetooth devices that report a battery. Read on demand (for the lock screen), never on a timer.
+    @Published private(set) var connected: [ConnectedDevice] = []
+
+    struct ConnectedDevice: Equatable, Identifiable {
+        var name: String
+        var battery: DeviceBattery
+        var id: String { name }
+    }
+
+    func refreshConnected() {
+        DispatchQueue.global(qos: .utility).async {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+            p.arguments = ["SPBluetoothDataType", "-json"]
+            let out = Pipe()
+            p.standardOutput = out
+            p.standardError = FileHandle.nullDevice
+            var list: [ConnectedDevice] = []
+            if (try? p.run()) != nil {
+                let data = out.fileHandleForReading.readDataToEndOfFile()
+                p.waitUntilExit()
+                list = BluetoothProfilerParser.parseConnected(data).map { ConnectedDevice(name: $0.name, battery: $0.battery) }
+            }
+            DispatchQueue.main.async { MainActor.assumeIsolated { [weak self] in if self?.connected != list { self?.connected = list } } }
+        }
+    }
 
     private let settings = Settings.shared
     private var connectNotification: IOBluetoothUserNotification?

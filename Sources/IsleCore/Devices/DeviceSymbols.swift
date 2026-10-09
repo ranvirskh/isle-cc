@@ -123,6 +123,27 @@ public enum BluetoothProfilerParser {
         address.uppercased().replacingOccurrences(of: "-", with: ":")
     }
 
+    /// Devices that are connected right now and report a battery level, from the same profiler output.
+    public static func parseConnected(_ data: Data) -> [(name: String, battery: DeviceBattery)] {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let sections = root["SPBluetoothDataType"] as? [[String: Any]] else { return [] }
+        var out: [(String, DeviceBattery)] = []
+        for section in sections {
+            guard let devices = section["device_connected"] as? [[String: Any]] else { continue }
+            for entry in devices {
+                for (name, raw) in entry {
+                    guard let props = raw as? [String: Any] else { continue }
+                    let battery = DeviceBattery(
+                        left: percent(props["device_batteryLevelLeft"]), right: percent(props["device_batteryLevelRight"]),
+                        caseLevel: percent(props["device_batteryLevelCase"]),
+                        main: percent(props["device_batteryLevelMain"]) ?? percent(props["device_batteryLevel"]))
+                    if !battery.isEmpty { out.append((name, battery)) }
+                }
+            }
+        }
+        return out.sorted { $0.0.localizedCaseInsensitiveCompare($1.0) == .orderedAscending }
+    }
+
     /// Parses `system_profiler SPBluetoothDataType -json` into battery levels keyed by address and by name.
     public static func parse(_ data: Data) -> (byAddress: [String: DeviceBattery], byName: [String: DeviceBattery]) {
         var byAddress: [String: DeviceBattery] = [:]

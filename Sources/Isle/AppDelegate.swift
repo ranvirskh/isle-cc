@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let simulate = args.contains("--simulate-lock")
         lockController = LockController(media: env.media, simulate: simulate)
         env.lock = lockController
+        lockController.env = env
 
         env.devices.onPopup = { [weak island] item in island?.enqueuePopup(item) }
         env.agents.onNotice = { [weak island] n in

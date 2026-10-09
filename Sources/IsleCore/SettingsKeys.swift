@@ -24,6 +24,10 @@ public enum SettingsKey {
     public static let animationPreset = "animationPreset"         // Motion.Preset, default smooth
     public static let animationsEnabled = "animationsEnabled"     // master switch, default true
     public static let animationsOff = "animationsOff"             // [Motion.Category.rawValue] switched off
+    public static let lockWidgets = "lockWidgets"                 // status widgets on the lock screen, default false
+    public static let lockWidgetWeather = "lockWidgetWeather"
+    public static let lockWidgetCharging = "lockWidgetCharging"
+    public static let lockWidgetBluetooth = "lockWidgetBluetooth"
     public static let weatherEnabled = "weatherEnabled"           // opt-in, default false
     public static let weatherCity = "weatherCity"
     public static let weatherUnit = "weatherUnit"                 // TemperatureUnit, default by locale
@@ -58,6 +62,10 @@ public enum SettingsKey {
         animationPreset: Motion.Preset.smooth.rawValue,
         animationsEnabled: true,
         animationsOff: [String](),
+        lockWidgets: false,
+        lockWidgetWeather: true,
+        lockWidgetCharging: true,
+        lockWidgetBluetooth: true,
         weatherEnabled: false,
         weatherCity: "",
         weatherUnit: TemperatureUnit.localeDefault().rawValue,
