@@ -117,31 +117,34 @@ final class IslandController {
     /// Decides what the collapsed island shows. Media (cover, equalizer, song banner) stays quiet while the user is in
     /// a full-screen Space; the privacy dots do not, because they are about safety rather than music.
     private func updateLive() {
-        let media = settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
-        let privacy = settings.privacyIndicator && env.privacy.state.isActive
+        // With the live-items setting off, the notch only widens for Claude usage, while a terminal or Claude is in front.
+        let wings = settings.liveWings
+        let media = wings && settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
+        let privacy = wings && settings.privacyIndicator && env.privacy.state.isActive
+        let privacyState = wings ? env.privacy.state : PrivacyState()
         let battery = env.devices.battery
         var charging = false
-        switch settings.chargingIndicator {
+        switch wings ? settings.chargingIndicator : .off {
         case .off: charging = false
         case .whileCharging: charging = battery.hasBattery && battery.isCharging
         case .brief: charging = chargingBrief && battery.isCharging
         }
-        let download = settings.downloadsIndicator ? env.downloads.summary : nil
+        let download = wings && settings.downloadsIndicator ? env.downloads.summary : nil
         let alert = env.usage.pillAlert
         let usage = alert == nil ? env.usage.pillPercent : nil
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
-        guard media != model.mediaLive || privacy != model.privacyLive || (live && settings.liveWings) != model.liveActive
-                || env.privacy.state != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
+        guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
+                || privacyState != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
             model.privacyLive = privacy
             model.chargingLive = charging
             model.download = download
             model.battery = battery
-            model.privacy = env.privacy.state
+            model.privacy = privacyState
             model.usagePercent = usage
             model.usageAlert = alert
-            model.liveActive = live && settings.liveWings
+            model.liveActive = live
         }
     }
 

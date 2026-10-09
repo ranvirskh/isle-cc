@@ -35,9 +35,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         env.shelf.start()
         env.calendar.start()
         env.devices.start()
-        env.usage.onCodingAppOpened = { [weak island] text in
-            island?.enqueuePopup(PopupItem(id: "usage-\(Int(Date().timeIntervalSince1970))", kind: .usage, symbol: "sparkle", title: "Claude usage", subtitle: text))
-        }
         env.agents.start()
         env.usage.start()
         island.start()
