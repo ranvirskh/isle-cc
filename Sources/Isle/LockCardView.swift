@@ -5,6 +5,9 @@ import IsleCore
 struct LockCardView: View {
     @ObservedObject var media: MediaController
     @ObservedObject var settings: Settings
+    /// Redraw clock for the lyric, the time labels and the bar. A plain timer, only alive while the card is on screen.
+    @State private var tick = Date()
+    private let ticker = Timer.publish(every: 0.25, tolerance: 0.1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Group {
@@ -16,10 +19,11 @@ struct LockCardView: View {
         }
         .frame(width: LockCardView.size.width, height: LockCardView.size.height)
         .allowsHitTesting(false)
+        .onReceive(ticker) { date in if media.now?.isPlaying ?? false { tick = date } }
         .environment(\.colorScheme, .dark)
     }
 
-    static let size = CGSize(width: 480, height: 204)
+    static let size = CGSize(width: 480, height: 224)
 
     private var showLyrics: Bool { settings.lockScreenLyrics && settings.lyricsEnabled }
 
@@ -42,13 +46,13 @@ struct LockCardView: View {
                 Spacer(minLength: 0)
             }
             // One timeline drives the lyric lines, the clock labels and the bar, so they always agree.
-            TimelineView(.animation(minimumInterval: 0.25, paused: !now.isPlaying)) { ctx in
-                let position = media.position(at: ctx.date)
+            Group {
+                let position = media.position(at: tick)
                 let duration = now.track.duration ?? 0
                 let fraction = duration > 0 ? min(1, position / duration) : 0
                 VStack(alignment: .leading, spacing: 10) {
                     if showLyrics {
-                        let lines = media.currentLyric(at: ctx.date)
+                        let lines = media.currentLyric(at: tick)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(lines.current?.text ?? " ")
                                 .font(.system(size: 19, weight: .semibold)).lineLimit(2).minimumScaleFactor(0.7)
@@ -94,7 +98,8 @@ struct LockGlass: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         if #available(macOS 26.0, *) {
-            content.glassEffect(.regular, in: shape)
+            // Glass is only the backdrop; the text sits on top as ordinary views so live updates always draw.
+            content.background { Color.clear.glassEffect(.regular, in: shape) }
         } else {
             content
                 .background(shape.fill(.ultraThinMaterial))
