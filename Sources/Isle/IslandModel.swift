@@ -52,7 +52,8 @@ final class IslandModel: ObservableObject {
 
     /// The collapsed island including its live wings, independent of the current phase.
     var collapsedLiveSize: CGSize {
-        CGSize(width: collapsedSize.width + 2 * liveSide, height: collapsedSize.height + liveThickness)
+        guard liveActive else { return collapsedSize }
+        return CGSize(width: collapsedSize.width + 2 * liveSide, height: collapsedSize.height + liveThickness)
     }
 
     var shapeSize: CGSize {

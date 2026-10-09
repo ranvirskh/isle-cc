@@ -61,14 +61,17 @@ struct IslandRootView: View {
                     .fill(style.background)
                     .overlay(GlossOverlay(flare: flare, bottom: bottom).opacity(style.hasGloss && model.phase != .collapsed ? 1 : 0))
                     .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.4), radius: 10, x: 0, y: 4)
+                    // Laid out at the collapsed size, never the animating shape size, so the cover cannot be stretched or
+                    // dragged outward while the island grows; it disappears at once on opening and fades in once closed.
+                    // An overlay, so it can never make the black shape wider than the shape size.
+                    .overlay(alignment: .top) {
+                        LiveActivityView()
+                            .frame(width: model.collapsedLiveSize.width, height: model.collapsedLiveSize.height)
+                            .opacity(model.phase == .collapsed && model.liveActive ? 1 : 0)
+                            .animation(model.phase == .collapsed ? Motion.ease(0.2, delay: 0.15, .media) : nil, value: model.phase)
+                            .allowsHitTesting(false)
+                    }
                 content(size: size)
-                // Laid out at the collapsed size, never the animating shape size, so the cover cannot be stretched or
-                // dragged outward while the island grows; it disappears at once on opening and fades in once closed.
-                LiveActivityView()
-                    .frame(width: model.collapsedLiveSize.width, height: model.collapsedLiveSize.height)
-                    .opacity(model.phase == .collapsed && model.liveActive ? 1 : 0)
-                    .animation(model.phase == .collapsed ? Motion.ease(0.2, delay: 0.15, .media) : nil, value: model.phase)
-                    .allowsHitTesting(false)
             }
             .frame(width: size.width, height: size.height, alignment: .top)
             .contentShape(IslandShape(flare: flare, bottom: bottom))
