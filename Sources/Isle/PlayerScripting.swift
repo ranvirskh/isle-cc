@@ -18,19 +18,19 @@ final class PlayerScripting {
         if isSpotify {
             return """
             tell application id "\(bundleID)"
-              set st to (player state as string)
-              if st is "stopped" then return "state=stopped"
+              set ps to (player state as string)
+              if ps is "stopped" then return "state=stopped"
               set t to current track
-              return "state=" & st & \(sep) & "title=" & (name of t) & \(sep) & "artist=" & (artist of t) & \(sep) & "album=" & (album of t) & \(sep) & "duration=" & (duration of t) & \(sep) & "durationUnit=ms" & \(sep) & "position=" & (player position) & \(sep) & "shuffle=" & (shuffling) & \(sep) & "id=" & (id of t)
+              return "state=" & ps & \(sep) & "title=" & (name of t) & \(sep) & "artist=" & (artist of t) & \(sep) & "album=" & (album of t) & \(sep) & "duration=" & (duration of t) & \(sep) & "durationUnit=ms" & \(sep) & "position=" & (player position) & \(sep) & "shuffle=" & (shuffling) & \(sep) & "id=" & (id of t)
             end tell
             """
         }
         return """
         tell application id "\(bundleID)"
-          set st to (player state as string)
-          if st is "stopped" then return "state=stopped"
+          set ps to (player state as string)
+          if ps is "stopped" then return "state=stopped"
           set t to current track
-          return "state=" & st & \(sep) & "title=" & (name of t) & \(sep) & "artist=" & (artist of t) & \(sep) & "album=" & (album of t) & \(sep) & "duration=" & (duration of t) & \(sep) & "position=" & (player position) & \(sep) & "shuffle=" & (shuffle enabled)
+          return "state=" & ps & \(sep) & "title=" & (name of t) & \(sep) & "artist=" & (artist of t) & \(sep) & "album=" & (album of t) & \(sep) & "duration=" & (duration of t) & \(sep) & "position=" & (player position) & \(sep) & "shuffle=" & (shuffle enabled)
         end tell
         """
     }
@@ -53,6 +53,7 @@ final class PlayerScripting {
             if let err {
                 let code = (err[NSAppleScript.errorNumber] as? Int) ?? 0
                 out = (code == -1743) ? .denied : .failed   // -1743: not authorized to send Apple events
+                Log.write("applescript status for \(id) failed: \(code)")
             } else if let raw = result?.stringValue, let snap = ScriptStatusParser.parse(raw, bundleID: id) {
                 out = .snapshot(snap)
             }
