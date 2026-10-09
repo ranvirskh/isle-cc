@@ -15,6 +15,8 @@ final class ClaudeUsageController: ObservableObject {
         return top
     }
 
+    var pillAlert: ClaudeUsage.Alert? { ClaudeUsage.alert(windows, now: Date()) }
+
     private let settings = Settings.shared
     private var timer: Timer?
     private var inFlight = false

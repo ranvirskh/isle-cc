@@ -4,15 +4,17 @@ import CoreGraphics
 public enum LiveLayout {
     public static let minimumSide: CGFloat = 34
     public static let coverSide: CGFloat = 44
+    /// Room for the percentage and time-left readout on the left.
+    public static let alertSide: CGFloat = 52
 
     /// `privacyIcons` is how many mic / camera / screen dots are showing. `chargingText` is true when the charging
     /// readout takes the right slot (it yields to the equalizer when music is playing).
-    public static func side(mediaLive: Bool, privacyIcons: Int, chargingLive: Bool, downloadLive: Bool = false, usageLive: Bool = false) -> CGFloat {
+    public static func side(mediaLive: Bool, privacyIcons: Int, chargingLive: Bool, downloadLive: Bool = false, usageLive: Bool = false, usageAlert: Bool = false) -> CGFloat {
         var right: CGFloat = 12
         right += CGFloat(privacyIcons) * 15
         if usageLive { right += 30 }
         if mediaLive { right += 22 } else if chargingLive || downloadLive { right += downloadLive ? 40 : 30 }
-        let left: CGFloat = mediaLive ? coverSide : 0
+        let left: CGFloat = (mediaLive ? coverSide : 0) + (usageAlert ? alertSide : 0)
         let hasRightContent = privacyIcons > 0 || usageLive || mediaLive || chargingLive || downloadLive
         return max(left, hasRightContent ? right : 0, minimumSide)
     }

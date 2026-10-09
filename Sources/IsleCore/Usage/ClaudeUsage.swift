@@ -32,6 +32,31 @@ public enum ClaudeUsage {
         windows.filter { LimitFormat.isCurrent($0, now: now) }.map(\.usedPercent).max()
     }
 
+    /// Shown on the left of the collapsed notch once the 5-hour window passes this.
+    public static let alertThreshold: Double = 90
+
+    public struct Alert: Equatable {
+        public var percent: Double
+        public var resetsAt: Date
+        public init(percent: Double, resetsAt: Date) { self.percent = percent; self.resetsAt = resetsAt }
+    }
+
+    /// The 5-hour window when it is at or above the alert threshold and has not reset yet.
+    public static func alert(_ windows: [LimitWindow], now: Date) -> Alert? {
+        guard let w = windows.first(where: { $0.id == "five_hour" }), w.usedPercent >= alertThreshold,
+              let reset = w.resetsAt, reset > now else { return nil }
+        return Alert(percent: w.usedPercent, resetsAt: reset)
+    }
+
+    /// Time until reset: whole hours (nearest) from one hour up, minutes below one hour. "2h", "45m", "<1m".
+    public static func timeLeftLabel(until reset: Date, now: Date) -> String {
+        let seconds = reset.timeIntervalSince(now)
+        guard seconds > 0 else { return "0m" }
+        if seconds >= 3600 { return "\(Int((seconds / 3600).rounded()))h" }
+        let minutes = Int((seconds / 60).rounded(.up))
+        return "\(max(1, min(59, minutes)))m"
+    }
+
     /// "5h 70% · wk 20%" for the header chip.
     public static func summary(_ windows: [LimitWindow], now: Date) -> String {
         windows.filter { LimitFormat.isCurrent($0, now: now) && ($0.id == "five_hour" || $0.id == "seven_day") }

@@ -406,6 +406,7 @@ struct LiveActivityView: View {
     private var liveDescription: String {
         var parts: [String] = []
         if let p = model.usagePercent { parts.append("Claude usage \(Int(p.rounded())) percent") }
+        if let a = model.usageAlert { parts.append("Claude 5-hour usage \(Int(a.percent.rounded())) percent, resets in \(ClaudeUsage.timeLeftLabel(until: a.resetsAt, now: Date()))") }
         parts += model.privacy.active.map(\.title)
         if model.chargingLive { parts.append("Charging \(model.battery.percent ?? 0) percent") }
         if let d = model.download { parts.append("Downloading \(d.firstName)") }
@@ -414,6 +415,7 @@ struct LiveActivityView: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            HStack(spacing: 6) {
             Group {
                 if !model.mediaLive, model.downloadLive {
                     Image(systemName: "arrow.down.circle.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color(red: 0.4, green: 0.8, blue: 1))
@@ -431,6 +433,8 @@ struct LiveActivityView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                     .id(media.now?.track.identity ?? "none")
                 }
+            }
+            if let alert = model.usageAlert { UsageAlertView(alert: alert) }
             }
             .padding(.leading, 8)
             .frame(width: model.liveSide, alignment: .leading)
@@ -601,6 +605,25 @@ struct UsageChip: View {
             }.joined(separator: "\n") + (stale ? "\nCould not refresh just now" : ""))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Claude usage: " + ClaudeUsage.summary(shown, now: now))
+        }
+    }
+}
+
+/// Left of the notch once the 5-hour limit is nearly used: the percentage over the time left until it resets.
+struct UsageAlertView: View {
+    let alert: ClaudeUsage.Alert
+
+    var body: some View {
+        TimelineView(.everyMinute) { ctx in
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(Int(alert.percent.rounded()))%")
+                    .font(.system(size: 11, weight: .bold, design: .rounded)).monospacedDigit()
+                    .foregroundStyle(Color(severity: LimitSeverity(usedPercent: alert.percent)))
+                Text(ClaudeUsage.timeLeftLabel(until: alert.resetsAt, now: ctx.date))
+                    .font(.system(size: 9, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.65))
+            }
+            .lineLimit(1).fixedSize()
         }
     }
 }

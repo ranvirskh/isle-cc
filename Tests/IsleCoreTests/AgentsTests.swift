@@ -865,3 +865,42 @@ final class ClaudeUsageTests: XCTestCase {
         XCTAssertEqual(ClaudeUsage.summary(w, now: now), "5h 70% · wk 20%")
     }
 }
+
+final class ClaudeUsageAlertTests: XCTestCase {
+    private func five(_ used: Double, resets: TimeInterval, now: Date) -> [LimitWindow] {
+        [LimitWindow(id: "five_hour", usedPercent: used, windowMinutes: 300, resetsAt: now.addingTimeInterval(resets), observedAt: now, source: "")]
+    }
+
+    func testAlertStartsAtNinetyPercent() {
+        let now = Date()
+        XCTAssertNil(ClaudeUsage.alert(five(89.9, resets: 3600, now: now), now: now))
+        XCTAssertEqual(ClaudeUsage.alert(five(90, resets: 3600, now: now), now: now)?.percent, 90)
+        XCTAssertNil(ClaudeUsage.alert(five(95, resets: -5, now: now), now: now), "a window that already reset is not an alert")
+    }
+
+    func testTimeLeftIsHoursFromOneHourAndMinutesBelow() {
+        let now = Date()
+        func label(_ s: TimeInterval) -> String { ClaudeUsage.timeLeftLabel(until: now.addingTimeInterval(s), now: now) }
+        XCTAssertEqual(label(4 * 3600 + 600), "4h")
+        XCTAssertEqual(label(3600), "1h")
+        XCTAssertEqual(label(3599), "59m")
+        XCTAssertEqual(label(45 * 60), "45m")
+        XCTAssertEqual(label(20), "1m")
+        XCTAssertEqual(label(-1), "0m")
+    }
+
+    func testAlertWidensTheLeftWing() {
+        XCTAssertGreaterThan(LiveLayout.side(mediaLive: false, privacyIcons: 0, chargingLive: false, usageAlert: true), LiveLayout.minimumSide)
+        XCTAssertEqual(LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false, usageAlert: true),
+                       LiveLayout.coverSide + LiveLayout.alertSide)
+    }
+}
+
+final class FullScreenMenuBarTests: XCTestCase {
+    func testVisibleMenuBarMeansNotFullScreen() {
+        let screen = CGRect(x: 0, y: 0, width: 1728, height: 1117)
+        let zoomed = FullScreenDetector.Window(ownerPID: 5, layer: 0, frame: CGRect(x: 0, y: 33, width: 1728, height: 1117 - 33))
+        XCTAssertTrue(FullScreenDetector.isFullScreen(windows: [zoomed], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33))
+        XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [zoomed], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33, menuBarVisible: true))
+    }
+}

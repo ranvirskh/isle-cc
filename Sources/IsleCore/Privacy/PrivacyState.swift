@@ -67,8 +67,13 @@ public enum FullScreenDetector {
 
     /// A normal-layer window of the frontmost app that spans the whole display, either including the notch strip
     /// or starting just below it (full-screen windows on notched Macs sit under the camera housing).
-    public static func isFullScreen(windows: [Window], frontmostPID: Int32?, screenFrame: CGRect, safeAreaTop: CGFloat) -> Bool {
-        guard let frontmostPID else { return false }
+    ///
+    /// `menuBarVisible` is true while the menu bar is on screen. A zoomed window that fills everything below the menu
+    /// bar (for example Chrome with the Dock hidden) has the same size as a full-screen one on a notched Mac, but a real
+    /// full-screen Space hides the menu bar, so a visible menu bar means it is not full screen.
+    public static func isFullScreen(windows: [Window], frontmostPID: Int32?, screenFrame: CGRect, safeAreaTop: CGFloat,
+                                    menuBarVisible: Bool = false) -> Bool {
+        guard let frontmostPID, !menuBarVisible else { return false }
         let tolerance: CGFloat = 2
         return windows.contains { w in
             guard w.ownerPID == frontmostPID, w.layer == 0, abs(w.frame.width - screenFrame.width) <= tolerance else { return false }

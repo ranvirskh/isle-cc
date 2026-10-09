@@ -39,7 +39,14 @@ final class FullScreenMonitor: ObservableObject {
                   let dict = w[kCGWindowBounds as String] as? NSDictionary, let rect = CGRect(dictionaryRepresentation: dict) else { return nil }
             return .init(ownerPID: pid, layer: layer, frame: rect)
         }
-        let full = FullScreenDetector.isFullScreen(windows: windows, frontmostPID: front, screenFrame: info.frame, safeAreaTop: info.safeAreaTop)
+        // The menu bar window (level 24) sits at the top of the display while it is showing and is moved away in full screen.
+        let menuBarVisible = list.contains { w in
+            guard (w[kCGWindowLayer as String] as? Int) == 24,
+                  let dict = w[kCGWindowBounds as String] as? NSDictionary, let rect = CGRect(dictionaryRepresentation: dict) else { return false }
+            return rect.height > 0 && rect.minY >= info.frame.minY - 1 && rect.minY <= info.frame.minY + 1 && rect.width >= info.frame.width - 2
+        }
+        let full = FullScreenDetector.isFullScreen(windows: windows, frontmostPID: front, screenFrame: info.frame, safeAreaTop: info.safeAreaTop,
+                                                   menuBarVisible: menuBarVisible)
         if full != isFullScreen { isFullScreen = full; Log.write("fullscreen: \(full)") }
     }
 }

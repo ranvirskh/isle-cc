@@ -127,10 +127,11 @@ final class IslandController {
         case .brief: charging = chargingBrief && battery.isCharging
         }
         let download = settings.downloadsIndicator ? env.downloads.summary : nil
-        let usage = env.usage.pillPercent
-        let live = media || privacy || charging || download != nil || usage != nil
+        let alert = env.usage.pillAlert
+        let usage = alert == nil ? env.usage.pillPercent : nil
+        let live = media || privacy || charging || download != nil || usage != nil || alert != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
-                || env.privacy.state != model.privacy || usage != model.usagePercent || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
+                || env.privacy.state != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
             model.privacyLive = privacy
@@ -139,6 +140,7 @@ final class IslandController {
             model.battery = battery
             model.privacy = env.privacy.state
             model.usagePercent = usage
+            model.usageAlert = alert
             model.liveActive = live
         }
     }
