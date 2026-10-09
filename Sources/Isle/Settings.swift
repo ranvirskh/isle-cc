@@ -115,6 +115,18 @@ final class Settings: ObservableObject {
         get { Set((d.stringArray(forKey: SettingsKey.animationsOff) ?? []).compactMap(Motion.Category.init(rawValue:))) }
         set { set(newValue.map(\.rawValue).sorted(), SettingsKey.animationsOff) }
     }
+    var weatherEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.weatherEnabled) }
+        set { set(newValue, SettingsKey.weatherEnabled) }
+    }
+    var weatherCity: String {
+        get { d.string(forKey: SettingsKey.weatherCity) ?? "" }
+        set { set(newValue, SettingsKey.weatherCity) }
+    }
+    var weatherUnit: TemperatureUnit {
+        get { TemperatureUnit(rawValue: d.string(forKey: SettingsKey.weatherUnit) ?? "") ?? .localeDefault() }
+        set { set(newValue.rawValue, SettingsKey.weatherUnit) }
+    }
     var downloadsIndicator: Bool {
         get { d.bool(forKey: SettingsKey.downloadsIndicator) }
         set { set(newValue, SettingsKey.downloadsIndicator) }

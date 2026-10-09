@@ -4,6 +4,7 @@ import IsleCore
 struct SettingsView: View {
     @ObservedObject var settings: Settings
     @ObservedObject var calendar: CalendarController
+    @ObservedObject var weather: WeatherController
     let env: AppEnv
     @State private var cacheCleared = false
     @State private var confirmShelfReset = false
@@ -84,6 +85,22 @@ struct SettingsView: View {
                     }
                 }
                 Toggle("Battery in the header", isOn: binding({ settings.batteryInHeader }, { settings.batteryInHeader = $0 }))
+            }
+
+            Section("Weather") {
+                Toggle("Show weather in the header", isOn: binding({ settings.weatherEnabled }, { settings.weatherEnabled = $0 }))
+                Text(WeatherService.disclosure).font(.caption).foregroundStyle(.secondary)
+                if settings.weatherEnabled {
+                    TextField("City", text: binding({ settings.weatherCity }, { settings.weatherCity = $0 }), prompt: Text("e.g. Seattle"))
+                    Picker("Units", selection: binding({ settings.weatherUnit }, { settings.weatherUnit = $0 })) {
+                        Text("Celsius").tag(TemperatureUnit.celsius)
+                        Text("Fahrenheit").tag(TemperatureUnit.fahrenheit)
+                    }
+                    .pickerStyle(.segmented)
+                    if let w = weather.reading { Text("\(w.place.name)\(w.place.region.map { ", " + $0 } ?? ""): \(w.temperatureText) \(w.summary)").font(.caption) }
+                    else if let p = weather.problem, !settings.weatherCity.isEmpty { Text(p).font(.caption).foregroundStyle(.orange) }
+                    Link(WeatherService.attribution, destination: URL(string: "https://open-meteo.com/")!).font(.caption)
+                }
             }
 
             Section("Look") {

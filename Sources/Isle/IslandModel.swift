@@ -91,6 +91,7 @@ final class AppEnv: ObservableObject {
     let agents = AgentsController()
     let privacy = PrivacyMonitor()
     let downloads = DownloadsController()
+    let weather = WeatherController()
     let fullScreen = FullScreenMonitor()
     let shelf = ShelfController()
     let settings = Settings.shared

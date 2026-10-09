@@ -144,6 +144,7 @@ struct HeaderView: View {
     @EnvironmentObject var settings: Settings
     @EnvironmentObject var devices: DevicesController
     @EnvironmentObject var agents: AgentsController
+    @EnvironmentObject var weather: WeatherController
     let flare: CGFloat
 
     var body: some View {
@@ -162,6 +163,7 @@ struct HeaderView: View {
                     .background(Capsule().fill(Color.white.opacity(0.12)))
             }
             HeaderIconButton(symbol: "gearshape.fill", help: "Settings") { AppDelegate.shared.showSettings() }
+            if settings.weatherEnabled, let w = weather.reading { WeatherChip(reading: w) }
             if settings.privacyIndicator { PrivacyDots(state: model.privacy) }
             if settings.batteryInHeader, devices.battery.hasBattery { BatteryChip(state: devices.battery) }
         }
@@ -527,5 +529,19 @@ struct GlossOverlay: View {
                 .stroke(LinearGradient(colors: [Color.white.opacity(0.0), Color.white.opacity(0.45)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
         }
         .allowsHitTesting(false)
+    }
+}
+
+struct WeatherChip: View {
+    let reading: WeatherReading
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: reading.symbol).symbolRenderingMode(.multicolor).font(.system(size: 12))
+            Text(reading.temperatureText).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(.white.opacity(0.9))
+        }
+        .padding(.horizontal, 6)
+        .help("\(reading.place.name): \(reading.summary)" + (reading.high.map { h in reading.low.map { " · H \(Int(h.rounded()))° L \(Int($0.rounded()))°" } ?? "" } ?? ""))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(reading.place.name) \(reading.temperatureText), \(reading.summary)")
     }
 }

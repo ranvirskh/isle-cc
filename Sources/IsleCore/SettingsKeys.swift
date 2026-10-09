@@ -24,6 +24,9 @@ public enum SettingsKey {
     public static let animationPreset = "animationPreset"         // Motion.Preset, default smooth
     public static let animationsEnabled = "animationsEnabled"     // master switch, default true
     public static let animationsOff = "animationsOff"             // [Motion.Category.rawValue] switched off
+    public static let weatherEnabled = "weatherEnabled"           // opt-in, default false
+    public static let weatherCity = "weatherCity"
+    public static let weatherUnit = "weatherUnit"                 // TemperatureUnit, default by locale
     public static let downloadsIndicator = "downloadsIndicator"   // watch ~/Downloads for browser downloads, default true
     public static let theme = "theme"                             // IslandTheme, default classic
     public static let chargingIndicator = "chargingIndicator"     // ChargingIndicatorMode, default whileCharging
@@ -55,6 +58,9 @@ public enum SettingsKey {
         animationPreset: Motion.Preset.smooth.rawValue,
         animationsEnabled: true,
         animationsOff: [String](),
+        weatherEnabled: false,
+        weatherCity: "",
+        weatherUnit: TemperatureUnit.localeDefault().rawValue,
         downloadsIndicator: true,
         theme: IslandTheme.classic.rawValue,
         chargingIndicator: ChargingIndicatorMode.whileCharging.rawValue,

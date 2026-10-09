@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                                            title: "Download finished", subtitle: "\(name) · \(DownloadTracker.format(bytes: bytes))"))
         }
         env.downloads.start()
+        env.weather.start()
         env.fullScreen.start { [weak island] in island?.model.screen ?? ScreenInfo(NSScreen.main ?? NSScreen.screens[0]) }
         lockController.start()
         Log.write("lock feature: supported=\(lockController.isSupported) \(lockController.unsupportedReason ?? "")")
@@ -108,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             w.makeKeyAndOrderFront(nil)
             return
         }
-        let host = NSHostingController(rootView: SettingsView(settings: env.settings, calendar: env.calendar, env: env))
+        let host = NSHostingController(rootView: SettingsView(settings: env.settings, calendar: env.calendar, weather: env.weather, env: env))
         let w = NSWindow(contentViewController: host)
         w.title = "Isle Settings"
         w.styleMask = [.titled, .closable, .miniaturizable]

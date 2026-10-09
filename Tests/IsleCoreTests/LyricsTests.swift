@@ -722,3 +722,106 @@ final class LyricsServiceTests: XCTestCase {
         XCTAssertEqual(s.snapshot?.state, .unavailable)
     }
 }
+
+// MARK: - Weather (canned responses; no live network)
+
+private final class CannedWeatherTransport: HTTPTransport, @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var urls: [URL] = []
+    private(set) var headers: [[String: String]] = []
+    var geocoding = Data(#"{"results":[{"id":1,"name":"Seattle","latitude":47.60621,"longitude":-122.33207,"country":"United States","admin1":"Washington","timezone":"America/Los_Angeles"}]}"#.utf8)
+    var forecast = Data(#"{"current":{"temperature_2m":14.6,"weather_code":61,"is_day":1},"daily":{"temperature_2m_max":[17.2],"temperature_2m_min":[9.1]}}"#.utf8)
+    var failForecast = false
+
+    func get(_ url: URL, headers: [String: String], timeout: TimeInterval) async throws -> HTTPResponse {
+        lock.withLock { urls.append(url); self.headers.append(headers) }
+        if url.host?.contains("geocoding") == true { return HTTPResponse(status: 200, body: geocoding) }
+        if failForecast { throw URLError(.notConnectedToInternet) }
+        return HTTPResponse(status: 200, body: forecast)
+    }
+    var count: Int { lock.withLock { urls.count } }
+}
+
+final class WeatherTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_791_500_000)
+
+    private func service(_ transport: CannedWeatherTransport, enabled: Bool = true, city: String = "Seattle") -> WeatherService {
+        let s = WeatherService(transport: transport, userAgent: "Isle test")
+        s.isEnabled = { enabled }
+        s.city = { city }
+        s.unit = { .celsius }
+        return s
+    }
+
+    func testParsesGeocodingAndForecast() async {
+        let t = CannedWeatherTransport()
+        let r = await service(t).refresh(now: t0)
+        XCTAssertEqual(r?.place.name, "Seattle")
+        XCTAssertEqual(r?.place.region, "Washington")
+        XCTAssertEqual(r?.temperatureText, "15°")
+        XCTAssertEqual(r?.high, 17.2)
+        XCTAssertEqual(r?.low, 9.1)
+        XCTAssertEqual(r?.symbol, "cloud.rain.fill")
+        XCTAssertEqual(r?.summary, "Rain")
+        XCTAssertEqual(t.headers.first?["User-Agent"], "Isle test")
+    }
+
+    func testNothingIsSentWhileOffOrWithoutACity() async {
+        let off = CannedWeatherTransport()
+        let r1 = await service(off, enabled: false).refresh(now: t0)
+        XCTAssertNil(r1)
+        XCTAssertEqual(off.count, 0)
+        let blank = CannedWeatherTransport()
+        let r2 = await service(blank, city: "   ").refresh(now: t0)
+        XCTAssertNil(r2)
+        XCTAssertEqual(blank.count, 0)
+    }
+
+    func testGeocodingIsCachedAndRefreshIsRateLimited() async {
+        let t = CannedWeatherTransport()
+        let s = service(t)
+        await s.refresh(now: t0)
+        XCTAssertEqual(t.count, 2, "one geocoding call and one forecast call")
+        await s.refresh(now: t0.addingTimeInterval(60))
+        XCTAssertEqual(t.count, 2, "not due yet")
+        await s.refresh(now: t0.addingTimeInterval(31 * 60))
+        XCTAssertEqual(t.count, 3, "only the forecast is repeated")
+    }
+
+    func testChangingTheCityGeocodesAgain() async {
+        let t = CannedWeatherTransport()
+        var city = "Seattle"
+        let s = WeatherService(transport: t, userAgent: "x")
+        s.isEnabled = { true }
+        s.city = { city }
+        await s.refresh(now: t0)
+        city = "Portland"
+        await s.refresh(now: t0.addingTimeInterval(10))
+        XCTAssertEqual(t.count, 4)
+    }
+
+    func testNetworkFailureKeepsTheLastReading() async {
+        let t = CannedWeatherTransport()
+        let s = service(t)
+        await s.refresh(now: t0)
+        t.failForecast = true
+        let r = await s.refresh(now: t0.addingTimeInterval(31 * 60))
+        XCTAssertEqual(r?.temperatureText, "15°")
+    }
+
+    func testMalformedResponsesAreIgnored() {
+        XCTAssertNil(OpenMeteoParser.parseGeocoding(Data("not json".utf8)))
+        XCTAssertNil(OpenMeteoParser.parseGeocoding(Data(#"{"results":[]}"#.utf8)))
+        XCTAssertNil(OpenMeteoParser.parseGeocoding(Data(#"{"results":[{"name":"X","latitude":999,"longitude":0}]}"#.utf8)))
+        let p = WeatherPlace(name: "X", latitude: 1, longitude: 1)
+        XCTAssertNil(OpenMeteoParser.parseForecast(Data(#"{"current":{}}"#.utf8), place: p, unit: .celsius, now: t0))
+    }
+
+    func testEveryCodeHasASymbolAndText() {
+        for code in [0, 1, 2, 3, 45, 51, 56, 61, 66, 71, 80, 85, 95, 96, 12345] {
+            XCTAssertFalse(WeatherCondition.symbol(code: code, isDay: true).isEmpty)
+            XCTAssertFalse(WeatherCondition.text(code: code).isEmpty)
+        }
+        XCTAssertEqual(WeatherCondition.symbol(code: 0, isDay: false), "moon.stars.fill")
+    }
+}

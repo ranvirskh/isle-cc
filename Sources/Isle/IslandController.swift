@@ -65,7 +65,7 @@ final class IslandController {
         panel.animationBehavior = .none
         self.panel = panel
 
-        let root = IslandRootView().environmentObject(model).environmentObject(env).environmentObject(env.media)
+        let root = IslandRootView().environmentObject(env.weather).environmentObject(model).environmentObject(env).environmentObject(env.media)
             .environmentObject(env.calendar).environmentObject(env.devices).environmentObject(env.agents)
             .environmentObject(env.shelf).environmentObject(settings)
         hosting = NSHostingView(rootView: AnyView(root))
