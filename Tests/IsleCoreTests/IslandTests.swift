@@ -277,3 +277,34 @@ final class PopupQueueTests: XCTestCase {
         XCTAssertEqual(q.pending.map(\.id), ["p"])
     }
 }
+
+final class MotionOptionsTests: XCTestCase {
+    override func tearDown() {
+        Motion.animationsEnabled = true
+        Motion.disabledCategories = []
+        Motion.preset = .smooth
+    }
+
+    func testCategoryCanBeSwitchedOff() {
+        Motion.disabledCategories = [.banner]
+        XCTAssertFalse(Motion.isOn(.banner))
+        XCTAssertTrue(Motion.isOn(.shape))
+    }
+
+    func testMasterSwitchDisablesEverything() {
+        Motion.animationsEnabled = false
+        for c in Motion.Category.allCases { XCTAssertFalse(Motion.isOn(c)) }
+    }
+
+    func testEveryCategoryHasADefaultPreset() {
+        for p in Motion.Preset.allCases { Motion.preset = p; XCTAssertTrue(Motion.isOn(.content)) }
+    }
+
+    func testNowPlayingBannerQueuesAndReplaces() {
+        var q = PopupQueue()
+        q.enqueue(PopupItem(id: "np-a", kind: .nowPlaying, symbol: "music.note", title: "A"))
+        q.removeAll(kind: .nowPlaying)
+        q.enqueue(PopupItem(id: "np-b", kind: .nowPlaying, symbol: "music.note", title: "B"))
+        XCTAssertEqual(q.pending.map(\.id), ["np-b"])
+    }
+}

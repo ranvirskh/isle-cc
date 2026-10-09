@@ -166,7 +166,7 @@ public struct IslandStateMachine: Equatable {
 // MARK: - Pop-up queue
 
 public enum PopupKind: String, Codable, CaseIterable {
-    case bluetoothDevice, power, agentCompletion
+    case bluetoothDevice, power, agentCompletion, nowPlaying
 }
 
 public struct PopupItem: Equatable, Identifiable {

@@ -83,6 +83,12 @@ public final class LyricsService {
         public var state: LyricsState
         /// Raw words, kept for a possible full-lyrics panel. Presentation filtering never touches these.
         public var payload: LyricsPayload?
+
+        public init(trackIdentity: String, state: LyricsState, payload: LyricsPayload?) {
+            self.trackIdentity = trackIdentity
+            self.state = state
+            self.payload = payload
+        }
     }
 
     private let resolver: LyricsResolver

@@ -10,6 +10,35 @@ public enum Motion {
     /// Mirrors the system Reduce Motion setting.
     public static var reduceMotion: Bool = false
 
+    /// Groups of animation the user can switch off individually in Settings.
+    public enum Category: String, CaseIterable, Codable {
+        case shape      // the island opening, closing and resizing
+        case content    // content fading / scaling in and out with the shape
+        case tabs       // tab switches and drop-target changes
+        case media      // artwork flip, title slide, play/pause icon, progress
+        case lyrics     // line-to-line lyric motion and marquee
+        case banner     // the song-change banner
+        case buttons    // press feedback
+    }
+
+    /// Overall feel. Scales spring response and damping.
+    public enum Preset: String, CaseIterable, Codable {
+        case smooth, snappy, bouncy, minimal
+        var responseScale: Double {
+            switch self { case .smooth: return 1.15; case .snappy: return 0.8; case .bouncy: return 1.0; case .minimal: return 0.9 }
+        }
+        var dampingOffset: Double {
+            switch self { case .smooth: return 0.06; case .snappy: return 0.04; case .bouncy: return -0.14; case .minimal: return 0.15 }
+        }
+    }
+
+    public static var preset: Preset = .smooth
+    /// Master switch; when false every animation is instant.
+    public static var animationsEnabled = true
+    public static var disabledCategories: Set<Category> = []
+
+    public static func isOn(_ c: Category) -> Bool { animationsEnabled && !disabledCategories.contains(c) }
+
     public struct Spring: Equatable {
         public var response: Double
         public var damping: Double
@@ -37,9 +66,9 @@ public enum Motion {
     // MARK: Shape springs
 
     /// Collapsed -> expanded. Slight overshoot, quick settle.
-    public static let expand = Spring(response: 0.42, damping: 0.80)
+    public static let expand = Spring(response: 0.52, damping: 0.84)
     /// Expanded -> collapsed. No overshoot so the shape never dips under the notch.
-    public static let collapse = Spring(response: 0.36, damping: 0.95)
+    public static let collapse = Spring(response: 0.42, damping: 0.95)
     /// Collapsed -> pop-up and back.
     public static let popup = Spring(response: 0.40, damping: 0.82)
     /// Size change between tabs while expanded.
@@ -54,7 +83,7 @@ public enum Motion {
     public static let contentOutDuration: Double = 0.12
     /// Scale and blur the content starts from while the shape opens.
     public static let contentInScale: Double = 0.94
-    public static let contentInBlur: Double = 8
+    public static let contentInBlur: Double = 0   // blur is costly on a large view; opacity + scale carry the effect
     /// Stagger between header, columns, and rows.
     public static let stagger: Double = 0.035
     /// Tab cross-fade.
@@ -75,6 +104,12 @@ public enum Motion {
     public static let buttonPress = Spring(response: 0.22, damping: 0.6)
     public static let progressTick: Double = 0.25
 
+    // MARK: Song-change banner
+
+    /// How long the banner stays up when a new song starts.
+    public static let bannerDuration: Double = 1.5
+    public static let bannerFlip = Spring(response: 0.6, damping: 0.72)
+
     // MARK: Lock screen card
 
     public static let lockCardIn = Spring(response: 0.5, damping: 0.85)
@@ -90,21 +125,27 @@ public enum Motion {
 
     // MARK: SwiftUI helpers
 
-    public static func spring(_ s: Spring) -> Animation {
+    private static let instant = Animation.linear(duration: 0.001)
+
+    public static func spring(_ s: Spring, _ c: Category = .shape) -> Animation {
+        guard isOn(c) else { return instant }
         if reduceMotion { return .easeOut(duration: reducedFade) }
-        return .spring(response: s.response / max(speed, 0.1), dampingFraction: s.damping)
+        let damping = min(1, max(0.35, s.damping + preset.dampingOffset))
+        return .spring(response: s.response * preset.responseScale / max(speed, 0.1), dampingFraction: damping)
     }
 
-    public static func ease(_ duration: Double, delay: Double = 0) -> Animation {
+    public static func ease(_ duration: Double, delay: Double = 0, _ c: Category = .content) -> Animation {
+        guard isOn(c) else { return instant }
         if reduceMotion { return .easeOut(duration: reducedFade) }
         let k = max(speed, 0.1)
-        return .easeInOut(duration: duration / k).delay(delay / k)
+        return .easeInOut(duration: duration * preset.responseScale / k).delay(delay / k)
     }
 
-    public static func easeOut(_ duration: Double, delay: Double = 0) -> Animation {
+    public static func easeOut(_ duration: Double, delay: Double = 0, _ c: Category = .content) -> Animation {
+        guard isOn(c) else { return instant }
         if reduceMotion { return .easeOut(duration: reducedFade) }
         let k = max(speed, 0.1)
-        return .easeOut(duration: duration / k).delay(delay / k)
+        return .easeOut(duration: duration * preset.responseScale / k).delay(delay / k)
     }
 
     /// Seconds, scaled by the speed setting, for non-SwiftUI timers that must line up with animations.

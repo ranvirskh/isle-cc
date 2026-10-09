@@ -21,6 +21,10 @@ public enum SettingsKey {
     public static let agentNoticeEnabled = "agentNoticeEnabled"   // default true
     public static let agentNoticeMinutes = "agentNoticeMinutes"   // default 2
     public static let agentHeaderChip = "agentHeaderChip"         // default false
+    public static let animationPreset = "animationPreset"         // Motion.Preset, default smooth
+    public static let animationsEnabled = "animationsEnabled"     // master switch, default true
+    public static let animationsOff = "animationsOff"             // [Motion.Category.rawValue] switched off
+    public static let songBanner = "songBanner"                   // default true
     public static let lyricsContact = "lyricsContact"             // optional contact appended to the User-Agent
 
     public static let defaults: [String: Any] = [
@@ -43,6 +47,10 @@ public enum SettingsKey {
         agentNoticeEnabled: true,
         agentNoticeMinutes: 2.0,
         agentHeaderChip: false,
+        animationPreset: Motion.Preset.smooth.rawValue,
+        animationsEnabled: true,
+        animationsOff: [String](),
+        songBanner: true,
         lyricsContact: "",
     ]
 }

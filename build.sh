@@ -73,6 +73,11 @@ BIN="$(swift build -c "$MODE" --show-bin-path)/$APP_NAME"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
+# System Now Playing helper: loaded into /usr/bin/perl at runtime (see Helper/isle_nowplaying.m). Signed ad-hoc on
+# purpose: the host process is Apple's perl, not Isle, so Isle's local identity is irrelevant to it.
+clang -dynamiclib -fobjc-arc -O2 -framework Foundation -o "$APP/Contents/Resources/libisle_nowplaying.dylib" Helper/isle_nowplaying.m
+codesign --force -s - "$APP/Contents/Resources/libisle_nowplaying.dylib" >/dev/null
+cp Helper/launcher.pl "$APP/Contents/Resources/launcher.pl"
 [[ -f Resources/AppIcon.icns ]] && cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<EOF
