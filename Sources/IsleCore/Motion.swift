@@ -25,10 +25,10 @@ public enum Motion {
     public enum Preset: String, CaseIterable, Codable {
         case smooth, snappy, bouncy, minimal
         var responseScale: Double {
-            switch self { case .smooth: return 1.15; case .snappy: return 0.8; case .bouncy: return 1.0; case .minimal: return 0.9 }
+            switch self { case .smooth: return 1.0; case .snappy: return 0.8; case .bouncy: return 1.0; case .minimal: return 0.9 }
         }
         var dampingOffset: Double {
-            switch self { case .smooth: return 0.06; case .snappy: return 0.04; case .bouncy: return -0.14; case .minimal: return 0.15 }
+            switch self { case .smooth: return 0.0; case .snappy: return 0.04; case .bouncy: return -0.14; case .minimal: return 0.15 }
         }
     }
 
@@ -53,7 +53,7 @@ public enum Motion {
     /// Default delay between the cursor entering the notch and expansion.
     public static let hoverExpandDelayDefault: Double = 0.12
     /// Delay between the cursor leaving and the collapse starting.
-    public static let collapseDelay: Double = 0.28
+    public static let collapseDelay: Double = 0.18
     /// Extra time a pop-up stays after the cursor leaves it.
     public static let popupLingerAfterHover: Double = 1.0
     /// How long a pop-up (device, power, agent) stays open.
@@ -66,9 +66,9 @@ public enum Motion {
     // MARK: Shape springs
 
     /// Collapsed -> expanded. Slight overshoot, quick settle.
-    public static let expand = Spring(response: 0.52, damping: 0.84)
+    public static let expand = Spring(response: 0.33, damping: 0.90)
     /// Expanded -> collapsed. No overshoot so the shape never dips under the notch.
-    public static let collapse = Spring(response: 0.42, damping: 0.95)
+    public static let collapse = Spring(response: 0.34, damping: 1.0)
     /// Collapsed -> pop-up and back.
     public static let popup = Spring(response: 0.40, damping: 0.82)
     /// Size change between tabs while expanded.
@@ -92,7 +92,7 @@ public enum Motion {
 
     // MARK: Media
 
-    public static let trackChangeDuration: Double = 0.35
+    public static let trackChangeDuration: Double = 0.45
     public static let artworkFlip = Spring(response: 0.45, damping: 0.80)
     public static let playPauseSwap: Double = 0.18
     public static let lyricLineDuration: Double = 0.32
