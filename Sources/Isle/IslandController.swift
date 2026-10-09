@@ -146,7 +146,7 @@ final class IslandController {
             chargingBriefWork?.cancel()
             let w = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.chargingBrief = false; self?.updateLive() } }
             chargingBriefWork = w
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: w)
+            DispatchQueue.main.asyncAfter(deadline: .now() + ChargingIndicatorMode.briefDuration, execute: w)
         }
         wasCharging = b.isCharging
         updateLive()

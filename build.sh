@@ -103,6 +103,8 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>NSCalendarsUsageDescription</key><string>Isle shows today's calendar events in the island.</string>
   <key>NSCalendarsFullAccessUsageDescription</key><string>Isle shows today's calendar events in the island.</string>
   <key>NSAppleEventsUsageDescription</key><string>Isle reads the current track from Spotify and Music and sends play, pause, skip, seek and shuffle commands.</string>
+  <key>NSLocationUsageDescription</key><string>Isle uses your location only to show the weather where you are.</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>Isle uses your location only to show the weather where you are.</string>
   <key>NSBluetoothAlwaysUsageDescription</key><string>Isle shows a brief pop-up when a Bluetooth device connects.</string>
 </dict>
 </plist>
@@ -117,6 +119,7 @@ cat > build/Isle.entitlements <<EOF
   <key>com.apple.security.automation.apple-events</key><true/>
   <key>com.apple.security.personal-information.calendars</key><true/>
   <key>com.apple.security.device.bluetooth</key><true/>
+  <key>com.apple.security.personal-information.location</key><true/>
 </dict>
 </plist>
 EOF

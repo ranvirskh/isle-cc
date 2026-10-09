@@ -30,6 +30,10 @@ public enum SettingsKey {
     public static let lockWidgetBluetooth = "lockWidgetBluetooth"
     public static let weatherEnabled = "weatherEnabled"           // opt-in, default false
     public static let weatherCity = "weatherCity"
+    public static let weatherUseLocation = "weatherUseLocation"   // use this Mac's location (default true)
+    public static let weatherLastLat = "weatherLastLat"           // last known coordinates, kept as a fallback
+    public static let weatherLastLon = "weatherLastLon"
+    public static let weatherLastName = "weatherLastName"
     public static let weatherUnit = "weatherUnit"                 // TemperatureUnit, default by locale
     public static let downloadsIndicator = "downloadsIndicator"   // watch ~/Downloads for browser downloads, default true
     public static let theme = "theme"                             // IslandTheme, default classic
@@ -68,10 +72,11 @@ public enum SettingsKey {
         lockWidgetBluetooth: true,
         weatherEnabled: false,
         weatherCity: "",
+        weatherUseLocation: true,
         weatherUnit: TemperatureUnit.localeDefault().rawValue,
         downloadsIndicator: true,
         theme: IslandTheme.classic.rawValue,
-        chargingIndicator: ChargingIndicatorMode.whileCharging.rawValue,
+        chargingIndicator: ChargingIndicatorMode.brief.rawValue,
         privacyIndicator: true,
         liveActivity: true,
         songBanner: true,

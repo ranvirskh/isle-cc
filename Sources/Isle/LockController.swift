@@ -88,7 +88,8 @@ final class LockController {
               LockWidgetsView.hasContent(settings: settings, weather: env.weather, devices: env.devices),
               let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else { return }
         let size = LockWidgetsView.size
-        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.minY + 72 + LockCardView.size.height + 10)
+        // Middle of the screen, as requested.
+        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.midY - size.height / 2)
         let p = LockPanel(contentRect: CGRect(origin: origin, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.isOpaque = false
         p.backgroundColor = .clear

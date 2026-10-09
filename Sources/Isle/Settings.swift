@@ -135,6 +135,10 @@ final class Settings: ObservableObject {
         get { d.bool(forKey: SettingsKey.weatherEnabled) }
         set { set(newValue, SettingsKey.weatherEnabled) }
     }
+    var weatherUseLocation: Bool {
+        get { d.bool(forKey: SettingsKey.weatherUseLocation) }
+        set { set(newValue, SettingsKey.weatherUseLocation) }
+    }
     var weatherCity: String {
         get { d.string(forKey: SettingsKey.weatherCity) ?? "" }
         set { set(newValue, SettingsKey.weatherCity) }

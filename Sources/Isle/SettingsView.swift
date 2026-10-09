@@ -103,14 +103,26 @@ struct SettingsView: View {
                 Toggle("Show weather in the header", isOn: binding({ settings.weatherEnabled }, { settings.weatherEnabled = $0 }))
                 Text(WeatherService.disclosure).font(.caption).foregroundStyle(.secondary)
                 if settings.weatherEnabled {
-                    TextField("City", text: binding({ settings.weatherCity }, { settings.weatherCity = $0 }), prompt: Text("e.g. Seattle"))
+                    Picker("Place", selection: binding({ settings.weatherUseLocation }, { settings.weatherUseLocation = $0 })) {
+                        Text("This Mac's location").tag(true)
+                        Text("A city I type").tag(false)
+                    }
+                    if settings.weatherUseLocation {
+                        if weather.location.isDenied {
+                            Button("Open Location Settings") {
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") { NSWorkspace.shared.open(url) }
+                            }
+                        }
+                    } else {
+                        TextField("City", text: binding({ settings.weatherCity }, { settings.weatherCity = $0 }), prompt: Text("e.g. Seattle"))
+                    }
                     Picker("Units", selection: binding({ settings.weatherUnit }, { settings.weatherUnit = $0 })) {
                         Text("Celsius").tag(TemperatureUnit.celsius)
                         Text("Fahrenheit").tag(TemperatureUnit.fahrenheit)
                     }
                     .pickerStyle(.segmented)
                     if let w = weather.reading { Text("\(w.place.name)\(w.place.region.map { ", " + $0 } ?? ""): \(w.temperatureText) \(w.summary)").font(.caption) }
-                    else if let p = weather.problem, !settings.weatherCity.isEmpty { Text(p).font(.caption).foregroundStyle(.orange) }
+                    else if let p = weather.problem { Text(p).font(.caption).foregroundStyle(.orange) }
                     Link(WeatherService.attribution, destination: URL(string: "https://open-meteo.com/")!).font(.caption)
                 }
             }
@@ -148,7 +160,7 @@ struct SettingsView: View {
                 }
                 Picker("Charging indicator", selection: binding({ settings.chargingIndicator }, { settings.chargingIndicator = $0 })) {
                     Text("Off").tag(ChargingIndicatorMode.off)
-                    Text("For a few seconds after plugging in").tag(ChargingIndicatorMode.brief)
+                    Text("For 5 seconds after plugging in").tag(ChargingIndicatorMode.brief)
                     Text("While charging").tag(ChargingIndicatorMode.whileCharging)
                 }
                 Toggle("Show browser downloads in the notch (watches your Downloads folder for file names and sizes)", isOn: binding({ settings.downloadsIndicator }, { settings.downloadsIndicator = $0 }))

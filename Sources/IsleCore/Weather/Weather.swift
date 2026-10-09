@@ -129,9 +129,9 @@ public enum OpenMeteoParser {
 public final class WeatherService: @unchecked Sendable {
     public static let attribution = "Weather data by Open-Meteo.com"
     public static let disclosure =
-        "When on, Isle sends the city name you type to Open-Meteo's geocoding service to find its coordinates, then those "
-        + "coordinates to Open-Meteo's forecast service about every 30 minutes. No account, no key, no location permission. "
-        + "Nothing is sent while this is off."
+        "When on, Isle sends coordinates to Open-Meteo's forecast service about every 30 minutes: your Mac's location (macOS "
+        + "asks permission once; Apple's service names the city) or, if you type a city instead, that city name to Open-Meteo's "
+        + "geocoding service first. No account and no key. The last known place is kept as a fallback. Nothing is sent while this is off."
 
     private let transport: HTTPTransport
     private let userAgent: String
@@ -147,6 +147,8 @@ public final class WeatherService: @unchecked Sendable {
     /// Consent and configuration gates, checked before every request.
     public var isEnabled: () -> Bool = { false }
     public var city: () -> String = { "" }
+    /// Coordinates from the device's own location (or its last known one). When it returns a place, no city lookup happens.
+    public var directPlace: () -> WeatherPlace? = { nil }
     public var unit: () -> TemperatureUnit = { .celsius }
 
     public init(transport: HTTPTransport, userAgent: String,
@@ -173,7 +175,9 @@ public final class WeatherService: @unchecked Sendable {
     @discardableResult
     public func refresh(now: Date = Date(), force: Bool = false) async -> WeatherReading? {
         guard isEnabled() else { reset(); return nil }
-        let query = city().trimmingCharacters(in: .whitespacesAndNewlines)
+        let direct = directPlace()
+        let query = direct.map { String(format: "loc:%.2f,%.2f", $0.latitude, $0.longitude) }
+            ?? city().trimmingCharacters(in: .whitespacesAndNewlines)
         let unit = unit()
         guard !query.isEmpty else { reset(); return nil }
 
@@ -189,7 +193,9 @@ public final class WeatherService: @unchecked Sendable {
 
         do {
             let place: WeatherPlace
-            if let cached = lock.withLock({ cachedPlace }), cached.query == query {
+            if let direct {
+                place = direct
+            } else if let cached = lock.withLock({ cachedPlace }), cached.query == query {
                 place = cached.place
             } else {
                 guard let u = url(geocodingBase, "/v1/search", [("name", query), ("count", "1"), ("language", "en"), ("format", "json")]) else { return latest }

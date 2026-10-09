@@ -19,4 +19,7 @@ public enum LiveLayout {
 
 public enum ChargingIndicatorMode: String, CaseIterable, Codable {
     case off, brief, whileCharging
+
+    /// How long the brief indicator stays after plugging in.
+    public static let briefDuration: Double = 5
 }

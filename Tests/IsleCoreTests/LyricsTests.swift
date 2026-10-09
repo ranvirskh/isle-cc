@@ -825,3 +825,35 @@ final class WeatherTests: XCTestCase {
         XCTAssertEqual(WeatherCondition.symbol(code: 0, isDay: false), "moon.stars.fill")
     }
 }
+
+final class WeatherLocationTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_791_500_000)
+
+    func testDeviceLocationSkipsCityLookupAndNeedsNoCity() async {
+        let t = CannedWeatherTransport()
+        let s = WeatherService(transport: t, userAgent: "x")
+        s.isEnabled = { true }
+        s.city = { "" }
+        s.directPlace = { WeatherPlace(name: "Here", latitude: 47.6, longitude: -122.3) }
+        let r = await s.refresh(now: t0)
+        XCTAssertEqual(r?.place.name, "Here")
+        XCTAssertEqual(t.count, 1, "only the forecast call; no geocoding")
+        XCTAssertTrue(t.urls.allSatisfy { $0.host?.contains("geocoding") != true })
+    }
+
+    func testMovingToANewLocationFetchesAgain() async {
+        let t = CannedWeatherTransport()
+        var lat = 47.6
+        let s = WeatherService(transport: t, userAgent: "x")
+        s.isEnabled = { true }
+        s.directPlace = { WeatherPlace(name: "Here", latitude: lat, longitude: -122.3) }
+        await s.refresh(now: t0)
+        lat = 40.7
+        await s.refresh(now: t0.addingTimeInterval(10))
+        XCTAssertEqual(t.count, 2)
+    }
+
+    func testBriefChargingIndicatorLastsFiveSeconds() {
+        XCTAssertEqual(ChargingIndicatorMode.briefDuration, 5)
+    }
+}

@@ -9,6 +9,7 @@ final class WeatherController: ObservableObject {
 
     private let settings = Settings.shared
     private let service: WeatherService
+    let location = LocationProvider()
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
     private var debounce: DispatchWorkItem?
@@ -19,13 +20,16 @@ final class WeatherController: ObservableObject {
         service.isEnabled = { Settings.shared.weatherEnabled }
         service.city = { Settings.shared.weatherCity }
         service.unit = { Settings.shared.weatherUnit }
+        let location = self.location
+        service.directPlace = { Settings.shared.weatherUseLocation ? location.place : nil }
+        location.onChange = { [weak self] in self?.scheduleRefresh(force: true) }
     }
 
     func start() {
         observers.append(NotificationCenter.default.addObserver(forName: .settingsChanged, object: nil, queue: .main) { [weak self] n in
             MainActor.assumeIsolated {
                 guard let key = n.object as? String,
-                      [SettingsKey.weatherEnabled, SettingsKey.weatherCity, SettingsKey.weatherUnit].contains(key) else { return }
+                      [SettingsKey.weatherEnabled, SettingsKey.weatherCity, SettingsKey.weatherUnit, SettingsKey.weatherUseLocation].contains(key) else { return }
                 self?.scheduleRefresh(force: true)
             }
         })
@@ -36,7 +40,7 @@ final class WeatherController: ObservableObject {
     }
 
     /// Typing a city must not send a request per keystroke.
-    private func scheduleRefresh(force: Bool) {
+    func scheduleRefresh(force: Bool) {
         debounce?.cancel()
         let w = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.refresh(force: force) } }
         debounce = w
@@ -46,7 +50,9 @@ final class WeatherController: ObservableObject {
     private func refresh(force: Bool) {
         timer?.invalidate()
         timer = nil
-        guard settings.weatherEnabled, !settings.weatherCity.trimmingCharacters(in: .whitespaces).isEmpty else {
+        if settings.weatherEnabled, settings.weatherUseLocation { location.request() }
+        let hasSource = settings.weatherUseLocation ? location.place != nil : !settings.weatherCity.trimmingCharacters(in: .whitespaces).isEmpty
+        guard settings.weatherEnabled, hasSource else {
             service.reset()
             reading = nil
             problem = nil
@@ -57,7 +63,7 @@ final class WeatherController: ObservableObject {
             let r = await service.refresh(force: force)
             guard let self else { return }
             self.reading = r
-            self.problem = r == nil ? "Could not find that city, or the weather service is unreachable." : nil
+            self.problem = r == nil ? (self.settings.weatherUseLocation ? (self.location.isDenied ? "Location access is off for Isle. Turn it on in System Settings > Privacy & Security > Location Services, or type a city instead." : "Waiting for your location, or the weather service is unreachable.") : "Could not find that city, or the weather service is unreachable.") : nil
             // One wake-up for the next due refresh; nothing runs in between.
             if self.settings.weatherEnabled {
                 let t = Timer.scheduledTimer(withTimeInterval: r == nil ? service.retryInterval : service.refreshInterval, repeats: false) { [weak self] _ in
