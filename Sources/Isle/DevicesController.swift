@@ -115,7 +115,7 @@ final class DevicesController: ObservableObject {
         // The name, model and battery levels show up in the profiler a moment after the connection is made, so look
         // again a couple of times if the device is not listed yet.
         Log.write("bluetooth: connect event name \(knownName ?? "nil") address \(address.isEmpty ? "none" : "present")")
-        resolve(address: address, knownName: knownName, attempt: 0, delays: [1.5, 3.0, 5.0]) { [weak self] info, battery in
+        resolve(address: address, knownName: knownName, attempt: 0, delays: [0.4, 0.8, 1.4]) { [weak self] info, battery in
             let name = knownName ?? info?.name ?? IOBluetoothDevice(addressString: address)?.nameOrAddress ?? "Bluetooth device"
             let lowered = name.lowercased()
             if ["iphone", "ipad", "macbook", "imac"].contains(where: lowered.contains) { return }

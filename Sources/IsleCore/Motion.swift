@@ -58,6 +58,8 @@ public enum Motion {
     public static let popupLingerAfterHover: Double = 1.0
     /// How long a pop-up (device, power, agent) stays open.
     public static let popupDuration: Double = 3.0
+    /// A device connecting stays only as long as the AirPods card on an iPhone.
+    public static let devicePopupDuration: Double = 2.0
     /// Pop-ups older than this when their turn comes are dropped.
     public static let popupMaxQueueAge: Double = 20.0
     /// Gap between two queued pop-ups.

@@ -904,3 +904,13 @@ final class FullScreenMenuBarTests: XCTestCase {
         XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [zoomed], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33, menuBarVisible: true))
     }
 }
+
+final class ClaudeUsageDisplayTests: XCTestCase {
+    func testFiveHourOnlyAboveFiftyWeeklyAlways() {
+        let now = Date()
+        func w(_ id: String, _ pct: Double) -> LimitWindow { LimitWindow(id: id, usedPercent: pct, windowMinutes: nil, resetsAt: now.addingTimeInterval(600), observedAt: now, source: "") }
+        XCTAssertEqual(ClaudeUsage.displayed([w("five_hour", 50), w("seven_day", 20)], now: now).map(\.id), ["seven_day"])
+        XCTAssertEqual(ClaudeUsage.displayed([w("five_hour", 50.1), w("seven_day", 20)], now: now).map(\.id), ["five_hour", "seven_day"])
+        XCTAssertEqual(ClaudeUsage.summary([w("five_hour", 30), w("seven_day", 20)], now: now), "wk 20%")
+    }
+}

@@ -9,10 +9,11 @@ final class ClaudeUsageController: ObservableObject {
     @Published private(set) var windows: [LimitWindow] = []
     @Published private(set) var failed = false
 
-    /// Worst current window, for the collapsed pill. Nil below the warning level.
+    /// The 5-hour window for the collapsed pill, only above 50%.
     var pillPercent: Double? {
-        guard let top = ClaudeUsage.highest(windows, now: Date()), top >= 60 else { return nil }
-        return top
+        guard let five = windows.first(where: { $0.id == "five_hour" }), LimitFormat.isCurrent(five, now: Date()),
+              five.usedPercent > ClaudeUsage.fiveHourShowAbove else { return nil }
+        return five.usedPercent
     }
 
     var pillAlert: ClaudeUsage.Alert? { ClaudeUsage.alert(windows, now: Date()) }

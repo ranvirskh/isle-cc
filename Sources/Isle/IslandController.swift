@@ -417,7 +417,11 @@ final class IslandController {
         }
         popupClearWork?.cancel()
         model.popup = item
-        machine.popupDuration = item.kind == .nowPlaying ? Motion.scaled(Motion.bannerDuration) : Motion.popupDuration
+        switch item.kind {
+        case .nowPlaying: machine.popupDuration = Motion.scaled(Motion.bannerDuration)
+        case .bluetoothDevice: machine.popupDuration = Motion.scaled(Motion.devicePopupDuration)
+        default: machine.popupDuration = Motion.popupDuration
+        }
         handle(.popupRequested)
         if machine.phase != .popup { popups.finishCurrent(); model.popup = nil }
     }

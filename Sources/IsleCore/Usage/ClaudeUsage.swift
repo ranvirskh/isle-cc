@@ -32,6 +32,21 @@ public enum ClaudeUsage {
         windows.filter { LimitFormat.isCurrent($0, now: now) }.map(\.usedPercent).max()
     }
 
+    /// The 5-hour limit is only shown once it is above this; the weekly limit is always shown.
+    public static let fiveHourShowAbove: Double = 50
+
+    /// Windows for the header chip and the notch: the weekly one, and the 5-hour one only when it is above 50%.
+    public static func displayed(_ windows: [LimitWindow], now: Date) -> [LimitWindow] {
+        windows.filter { w in
+            guard LimitFormat.isCurrent(w, now: now) else { return false }
+            switch w.id {
+            case "five_hour": return w.usedPercent > fiveHourShowAbove
+            case "seven_day": return true
+            default: return false
+            }
+        }
+    }
+
     /// Shown on the left of the collapsed notch once the 5-hour window passes this.
     public static let alertThreshold: Double = 90
 
@@ -59,7 +74,7 @@ public enum ClaudeUsage {
 
     /// "5h 70% · wk 20%" for the header chip.
     public static func summary(_ windows: [LimitWindow], now: Date) -> String {
-        windows.filter { LimitFormat.isCurrent($0, now: now) && ($0.id == "five_hour" || $0.id == "seven_day") }
+        displayed(windows, now: now)
             .map { "\($0.id == "five_hour" ? "5h" : "wk") \(Int($0.usedPercent.rounded()))%" }
             .joined(separator: " · ")
     }

@@ -169,7 +169,7 @@ struct HeaderView: View {
                 }
             }
             Spacer(minLength: model.isNotched ? model.collapsedSize.width + 16 : 8)
-            if settings.claudeUsage, !usage.windows.isEmpty {
+            if settings.claudeUsage, !ClaudeUsage.displayed(usage.windows, now: Date()).isEmpty {
                 UsageChip(windows: usage.windows, stale: usage.failed)
             } else if settings.agentHeaderChip, settings.agentsEnabled, let top = LimitFormat.highestPercent(agents.snapshots, now: Date()) {
                 Text("\(Int(top.rounded()))%")
@@ -586,7 +586,7 @@ struct UsageChip: View {
 
     var body: some View {
         let now = Date()
-        let shown = windows.filter { LimitFormat.isCurrent($0, now: now) && ($0.id == "five_hour" || $0.id == "seven_day") }
+        let shown = ClaudeUsage.displayed(windows, now: now)
         if !shown.isEmpty {
             HStack(spacing: 6) {
                 Image(systemName: "sparkle").font(.system(size: 9, weight: .bold)).foregroundStyle(.white.opacity(0.6))
