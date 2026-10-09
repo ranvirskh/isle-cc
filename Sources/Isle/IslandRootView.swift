@@ -348,26 +348,27 @@ struct NowPlayingBanner: View {
     @State private var textIn = false
 
     var body: some View {
-        VStack(spacing: 7) {
+        HStack(spacing: 9) {
             Group {
                 if let image = media.artwork {
                     Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
                 } else {
-                    ZStack { Color.white.opacity(0.12); Image(systemName: "music.note").font(.system(size: 24)).foregroundStyle(.white.opacity(0.5)) }
+                    ZStack { Color.white.opacity(0.12); Image(systemName: "music.note").font(.system(size: 11)).foregroundStyle(.white.opacity(0.5)) }
                 }
             }
-            .frame(width: 64, height: 64)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .frame(width: 26, height: 26)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-            VStack(spacing: 1) {
-                Text(item.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                Text(item.subtitle).font(.system(size: 12)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(item.title).font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                Text(item.subtitle).font(.system(size: 10)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
             }
             .opacity(textIn ? 1 : 0)
-            .offset(y: textIn ? 0 : 6)
+            .offset(x: textIn ? 0 : -6)
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, model.isNotched ? model.collapsedSize.height + 6 : 14)
+        .padding(.horizontal, 22)
+        .padding(.top, model.isNotched ? model.collapsedSize.height + 4 : 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .foregroundStyle(.white)
         .onAppear {
