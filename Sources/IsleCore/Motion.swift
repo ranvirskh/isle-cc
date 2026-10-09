@@ -68,7 +68,7 @@ public enum Motion {
     /// Collapsed -> expanded. Slight overshoot, quick settle.
     public static let expand = Spring(response: 0.33, damping: 0.90)
     /// Expanded -> collapsed. No overshoot so the shape never dips under the notch.
-    public static let collapse = Spring(response: 0.34, damping: 1.0)
+    public static let collapse = Spring(response: 0.40, damping: 1.0)
     /// Collapsed -> pop-up and back.
     public static let popup = Spring(response: 0.40, damping: 0.82)
     /// Size change between tabs while expanded.
@@ -80,7 +80,7 @@ public enum Motion {
     public static let contentInDelay: Double = 0.08
     public static let contentInDuration: Double = 0.24
     /// Content fades out before the shape finishes closing.
-    public static let contentOutDuration: Double = 0.12
+    public static let contentOutDuration: Double = 0.16
     /// Scale and blur the content starts from while the shape opens.
     public static let contentInScale: Double = 0.94
     public static let contentInBlur: Double = 0   // blur is costly on a large view; opacity + scale carry the effect

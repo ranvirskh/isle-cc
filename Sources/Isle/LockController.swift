@@ -30,6 +30,7 @@ final class LockController {
         self.media = media
         self.simulate = simulate
         self.elevator = elevator
+        (elevator as? SkyLightLockWindowElevator)?.diagnostics = { Log.write("lock: \($0)") }
         machine = LockStateMachine(enabled: Settings.shared.lockScreenEnabled, supported: simulate || elevator.isSupported)
         widgetMachine = LockStateMachine(enabled: Settings.shared.lockWidgets, supported: simulate || elevator.isSupported)
         _ = widgetMachine.handle(.trackChanged(identity: "widgets"))
@@ -88,8 +89,9 @@ final class LockController {
               LockWidgetsView.hasContent(settings: settings, weather: env.weather, devices: env.devices),
               let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else { return }
         let size = LockWidgetsView.size
-        // Middle of the screen, as requested.
-        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.midY - size.height / 2)
+        // Middle of the screen; when the now-playing card is on, sit just above it so the two never overlap.
+        let cardTop = settings.lockScreenEnabled ? LockCardView.size.height / 2 + 16 : 0
+        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.midY + cardTop - (settings.lockScreenEnabled ? 0 : size.height / 2))
         let p = LockPanel(contentRect: CGRect(origin: origin, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.isOpaque = false
         p.backgroundColor = .clear
@@ -153,8 +155,7 @@ final class LockController {
     private func showCard() {
         guard panel == nil, let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else { return }
         let size = LockCardView.size
-        // Bottom center, clear of the clock (top) and of the avatar / password field (middle).
-        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.minY + 72)
+        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.midY - size.height / 2)
         let p = LockPanel(contentRect: CGRect(origin: origin, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.isOpaque = false
         p.backgroundColor = .clear
@@ -183,7 +184,8 @@ final class LockController {
             ctx.duration = Motion.reduceMotion ? Motion.reducedFade : 0.35
             p.animator().alphaValue = 1
         }
-        Log.write("lock: card shown")
+        let lines = media.currentLyric()
+        Log.write("lock: card shown (lyrics setting \(settings.lockScreenLyrics && settings.lyricsEnabled), line \(lines.current == nil ? "none" : "present"), next \(lines.next == nil ? "none" : "present"))")
     }
 
     private func hideCard() {

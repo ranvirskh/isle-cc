@@ -12,8 +12,9 @@ struct HomeView: View {
             if let now = media.now {
                 ArtworkView(identity: now.track.identity)
                     .frame(width: style.theme.artworkSide, height: style.theme.artworkSide)
+                    .frame(maxHeight: .infinity, alignment: .center)
                 PlayerColumn(now: now)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 EmptyPlayerView()
                     .frame(maxWidth: .infinity)
@@ -25,6 +26,7 @@ struct HomeView: View {
             }
         }
         .animation(Motion.spring(Motion.artworkFlip, .media), value: media.now?.track.identity)
+        .onAppear { AppDelegate.shared.env.usage.refreshIfStale() }
     }
 }
 
@@ -98,8 +100,8 @@ struct PlayerColumn: View {
                 LyricLineView(font: .system(size: 12, weight: .medium), color: style.accent)
                     .frame(height: 16)
             }
-            Spacer(minLength: 2)
             ProgressView_(now: now)
+                .padding(.top, 3)
             ControlsRow(now: now)
         }
         .foregroundStyle(.white)

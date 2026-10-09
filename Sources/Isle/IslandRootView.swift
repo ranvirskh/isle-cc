@@ -39,8 +39,11 @@ struct IslandRootView: View {
     /// The expanded views stay built (so opening never pays for creating them) but every timeline in them is paused while collapsed.
     @State private var renderContent = true
     @State private var teardown: DispatchWorkItem?
+    /// Size the content was last laid out at while open. On closing, the content stays at this size and the shrinking
+    /// clip shape hides it, so the big view tree is not re-laid-out on every frame of the animation.
+    @State private var openContentSize: CGSize = .zero
 
-    private var flare: CGFloat { model.phase == .collapsed ? 0 : (model.isNotched ? 14 : 12) }
+    private var flare: CGFloat { model.phase == .collapsed ? (model.liveActive && model.isNotched ? model.liveFlare : 0) : (model.isNotched ? 14 : 12) }
     private var bottom: CGFloat {
         switch model.phase {
         case .collapsed: return model.isNotched ? 9 : 4.5
@@ -59,10 +62,12 @@ struct IslandRootView: View {
                     .overlay(GlossOverlay(flare: flare, bottom: bottom).opacity(style.hasGloss && model.phase != .collapsed ? 1 : 0))
                     .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.4), radius: 10, x: 0, y: 4)
                 content(size: size)
+                // Laid out at the collapsed size, never the animating shape size, so the cover cannot be stretched or
+                // dragged outward while the island grows; it disappears at once on opening and fades in once closed.
                 LiveActivityView()
-                    .frame(width: size.width, height: size.height)
+                    .frame(width: model.collapsedLiveSize.width, height: model.collapsedLiveSize.height)
                     .opacity(model.phase == .collapsed && model.liveActive ? 1 : 0)
-                    .animation(Motion.ease(0.2, delay: model.phase == .collapsed ? 0.15 : 0, .media), value: model.phase)
+                    .animation(model.phase == .collapsed ? Motion.ease(0.2, delay: 0.15, .media) : nil, value: model.phase)
                     .allowsHitTesting(false)
             }
             .frame(width: size.width, height: size.height, alignment: .top)
@@ -71,6 +76,9 @@ struct IslandRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.colorScheme, .dark)
         .environment(\.themeStyle, style)
+        .onChange(of: model.shapeSize) { _, new in
+            if model.phase != .collapsed { openContentSize = new }
+        }
         .onChange(of: model.phase) { _, new in
             teardown?.cancel()
             if new != .collapsed {
@@ -79,6 +87,10 @@ struct IslandRootView: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private func layoutSize(_ size: CGSize) -> CGSize {
+        model.phase == .collapsed && openContentSize != .zero ? openContentSize : size
     }
 
     @ViewBuilder
@@ -95,6 +107,7 @@ struct IslandRootView: View {
                     .transition(.opacity)
             }
         }
+        .frame(width: layoutSize(size).width, height: layoutSize(size).height, alignment: .top)
         .frame(width: size.width, height: size.height, alignment: .top)
         .animation(nil, value: size)
         .clipShape(IslandShape(flare: flare, bottom: bottom))
@@ -121,7 +134,6 @@ struct ExpandedView: View {
                 } else {
                     switch model.tab {
                     case .home: HomeView()
-                    case .airdrop: AirDropView()
                     case .shelf: ShelfView()
                     case .agents: AgentsView()
                     }
@@ -144,6 +156,7 @@ struct HeaderView: View {
     @EnvironmentObject var settings: Settings
     @EnvironmentObject var devices: DevicesController
     @EnvironmentObject var agents: AgentsController
+    @EnvironmentObject var usage: ClaudeUsageController
     @EnvironmentObject var weather: WeatherController
     let flare: CGFloat
 
@@ -155,7 +168,9 @@ struct HeaderView: View {
                 }
             }
             Spacer(minLength: model.isNotched ? model.collapsedSize.width + 16 : 8)
-            if settings.agentHeaderChip, settings.agentsEnabled, let top = LimitFormat.highestPercent(agents.snapshots, now: Date()) {
+            if settings.claudeUsage, !usage.windows.isEmpty {
+                UsageChip(windows: usage.windows, stale: usage.failed)
+            } else if settings.agentHeaderChip, settings.agentsEnabled, let top = LimitFormat.highestPercent(agents.snapshots, now: Date()) {
                 Text("\(Int(top.rounded()))%")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(severity: LimitSeverity(usedPercent: top)))
@@ -171,7 +186,7 @@ struct HeaderView: View {
         .padding(.top, model.isNotched ? 0 : 4)
     }
 
-    private var tabs: [IslandTab] { settings.agentsEnabled ? IslandTab.allCases : [.home, .airdrop, .shelf] }
+    private var tabs: [IslandTab] { settings.agentsEnabled ? IslandTab.allCases : [.home, .shelf] }
 }
 
 struct TabButton: View {
@@ -184,7 +199,6 @@ struct TabButton: View {
     var symbol: String {
         switch tab {
         case .home: return "house.fill"
-        case .airdrop: return "airplayaudio"
         case .shelf: return "tray.fill"
         case .agents: return "sparkles"
         }
@@ -192,15 +206,14 @@ struct TabButton: View {
     var title: String {
         switch tab {
         case .home: return "Home"
-        case .airdrop: return "AirDrop"
-        case .shelf: return "Shelf"
+        case .shelf: return "Shelf & AirDrop"
         case .agents: return "AI agents"
         }
     }
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: tab == .airdrop ? "dot.radiowaves.left.and.right" : symbol)
+            Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(selected ? Color.white : Color.white.opacity(hover ? 0.85 : 0.5))
                 .frame(width: 32, height: 24)
@@ -390,6 +403,15 @@ struct LiveActivityView: View {
     @EnvironmentObject var model: IslandModel
     @EnvironmentObject var media: MediaController
 
+    private var liveDescription: String {
+        var parts: [String] = []
+        if let p = model.usagePercent { parts.append("Claude usage \(Int(p.rounded())) percent") }
+        parts += model.privacy.active.map(\.title)
+        if model.chargingLive { parts.append("Charging \(model.battery.percent ?? 0) percent") }
+        if let d = model.download { parts.append("Downloading \(d.firstName)") }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             Group {
@@ -405,15 +427,20 @@ struct LiveActivityView: View {
                             ZStack { Color.white.opacity(0.15); Image(systemName: "music.note").font(.system(size: 10)).foregroundStyle(.white.opacity(0.6)) }
                         }
                     }
-                    .frame(width: 22, height: 22)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .frame(width: 28, height: 28)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                     .id(media.now?.track.identity ?? "none")
                 }
             }
-            .frame(width: model.liveSide, alignment: .center)
+            .padding(.leading, 8)
+            .frame(width: model.liveSide, alignment: .leading)
             Spacer(minLength: 0)
             HStack(spacing: 5) {
                 PrivacyDots(state: model.privacy)
+                if let p = model.usagePercent {
+                    Text("\(Int(p.rounded()))%").font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit()
+                        .foregroundStyle(Color(severity: LimitSeverity(usedPercent: p))).lineLimit(1).fixedSize()
+                }
                 if !model.mediaLive, let d = model.download {
                     Text(DownloadTracker.format(bytes: d.bytes)).font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()
                         .foregroundStyle(.white.opacity(0.9)).lineLimit(1).fixedSize()
@@ -428,9 +455,10 @@ struct LiveActivityView: View {
             .frame(width: model.liveSide, alignment: .center)
         }
         .frame(maxHeight: .infinity)
-        .padding(.bottom, model.isNotched ? 2 : 0)
+        .padding(.horizontal, model.liveFlare)
+        .padding(.bottom, model.isNotched ? 2 + model.liveThickness : 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel((model.privacy.active.map(\.title) + (model.chargingLive ? ["Charging \(model.battery.percent ?? 0) percent"] : []) + (model.download.map { ["Downloading \($0.firstName)"] } ?? [])).joined(separator: ", "))
+        .accessibilityLabel(liveDescription)
     }
 }
 
@@ -543,5 +571,36 @@ struct WeatherChip: View {
         .help("\(reading.place.name): \(reading.summary)" + (reading.high.map { h in reading.low.map { " · H \(Int(h.rounded()))° L \(Int($0.rounded()))°" } ?? "" } ?? ""))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(reading.place.name) \(reading.temperatureText), \(reading.summary)")
+    }
+}
+
+/// "5h 70% · wk 20%", each part coloured by how close it is to the limit. Tooltip shows the reset times.
+struct UsageChip: View {
+    let windows: [LimitWindow]
+    let stale: Bool
+
+    var body: some View {
+        let now = Date()
+        let shown = windows.filter { LimitFormat.isCurrent($0, now: now) && ($0.id == "five_hour" || $0.id == "seven_day") }
+        if !shown.isEmpty {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkle").font(.system(size: 9, weight: .bold)).foregroundStyle(.white.opacity(0.6))
+                ForEach(shown) { w in
+                    HStack(spacing: 3) {
+                        Text(w.id == "five_hour" ? "5h" : "wk").foregroundStyle(.white.opacity(0.55))
+                        Text("\(Int(w.usedPercent.rounded()))%").foregroundStyle(Color(severity: LimitSeverity(usedPercent: w.usedPercent)))
+                    }
+                }
+            }
+            .font(.system(size: 11, weight: .semibold, design: .rounded)).monospacedDigit()
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Capsule().fill(Color.white.opacity(0.12)))
+            .opacity(stale ? 0.6 : 1)
+            .help(shown.map { w in
+                "\(LimitFormat.windowName(w)): \(Int(w.usedPercent.rounded()))% used" + (LimitFormat.countdown(to: w.resetsAt, now: now).map { ", resets in \($0)" } ?? "")
+            }.joined(separator: "\n") + (stale ? "\nCould not refresh just now" : ""))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Claude usage: " + ClaudeUsage.summary(shown, now: now))
+        }
     }
 }

@@ -43,7 +43,7 @@ struct LockWidgetsView: View {
             .font(.system(size: 13, weight: .semibold, design: .rounded))
             .foregroundStyle(.white)
             .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(Capsule().fill(Color.black))
+            .modifier(LockGlass(cornerRadius: 22))
             .accessibilityElement(children: .combine)
     }
 

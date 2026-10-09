@@ -144,6 +144,25 @@ public enum BluetoothProfilerParser {
         return out.sorted { $0.0.localizedCaseInsensitiveCompare($1.0) == .orderedAscending }
     }
 
+    /// Device names by normalized address, for devices whose name was not known yet when they connected.
+    public static func names(_ data: Data) -> [String: String] {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let sections = root["SPBluetoothDataType"] as? [[String: Any]] else { return [:] }
+        var out: [String: String] = [:]
+        for section in sections {
+            for (key, value) in section where key.hasPrefix("device_") {
+                guard let devices = value as? [[String: Any]] else { continue }
+                for entry in devices {
+                    for (name, raw) in entry {
+                        guard let props = raw as? [String: Any], let address = Loose.string(props["device_address"]) else { continue }
+                        out[normalize(address: address)] = name
+                    }
+                }
+            }
+        }
+        return out
+    }
+
     /// Parses `system_profiler SPBluetoothDataType -json` into battery levels keyed by address and by name.
     public static func parse(_ data: Data) -> (byAddress: [String: DeviceBattery], byName: [String: DeviceBattery]) {
         var byAddress: [String: DeviceBattery] = [:]

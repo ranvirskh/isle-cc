@@ -99,6 +99,10 @@ final class Settings: ObservableObject {
         get { max(0.5, d.double(forKey: SettingsKey.agentNoticeMinutes)) }
         set { set(newValue, SettingsKey.agentNoticeMinutes) }
     }
+    var claudeUsage: Bool {
+        get { d.bool(forKey: SettingsKey.claudeUsage) }
+        set { set(newValue, SettingsKey.claudeUsage) }
+    }
     var agentHeaderChip: Bool {
         get { d.bool(forKey: SettingsKey.agentHeaderChip) }
         set { set(newValue, SettingsKey.agentHeaderChip) }

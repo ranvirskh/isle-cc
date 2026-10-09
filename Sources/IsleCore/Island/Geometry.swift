@@ -24,7 +24,7 @@ public struct ScreenInfo: Equatable {
 }
 
 public enum IslandTab: String, CaseIterable, Codable {
-    case home, airdrop, shelf, agents
+    case home, shelf, agents
 }
 
 public enum NotchGeometry {
@@ -62,8 +62,7 @@ public enum NotchGeometry {
         let base: CGSize
         switch tab {
         case .home: base = CGSize(width: 700, height: 208)
-        case .airdrop: base = CGSize(width: 560, height: 208)
-        case .shelf: base = CGSize(width: 640, height: 208)
+        case .shelf: base = CGSize(width: 700, height: 208)
         case .agents: base = CGSize(width: 700, height: 236)
         }
         let collapsed = collapsedSize(s)

@@ -20,6 +20,7 @@ public enum SettingsKey {
     public static let agentsHidden = "agentsHidden"               // [AgentKind.rawValue] switched off
     public static let agentNoticeEnabled = "agentNoticeEnabled"   // default true
     public static let agentNoticeMinutes = "agentNoticeMinutes"   // default 2
+    public static let claudeUsage = "claudeUsage"                 // fetch Claude plan usage from Anthropic, default true
     public static let agentHeaderChip = "agentHeaderChip"         // default false
     public static let animationPreset = "animationPreset"         // Motion.Preset, default smooth
     public static let animationsEnabled = "animationsEnabled"     // master switch, default true
@@ -62,6 +63,7 @@ public enum SettingsKey {
         agentsHidden: [String](),
         agentNoticeEnabled: true,
         agentNoticeMinutes: 2.0,
+        claudeUsage: true,
         agentHeaderChip: false,
         animationPreset: Motion.Preset.smooth.rawValue,
         animationsEnabled: true,

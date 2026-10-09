@@ -4,7 +4,7 @@ import CoreMediaIO
 import IsleCore
 
 /// Watches whether the microphone, a camera or a screen recording is active. Mic and camera are event driven
-/// (system property listeners); the screen check is a cheap window-list look every 2 s. Reads state only:
+/// (system property listeners); the screen check is a cheap window-list look every 3 s (stopped while the display is off). Reads state only:
 /// never audio, video or screen content, and it needs no permission.
 @MainActor
 final class PrivacyMonitor: ObservableObject {
@@ -25,11 +25,31 @@ final class PrivacyMonitor: ObservableObject {
         registerCamera()
         Log.write("privacy: watching \(micDevices.count) input devices, \(camDevices.count) camera devices")
         refresh()
-        let t = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        startTimer()
+        // Nothing to watch while the display is off or the session is switched out: stop the timer entirely.
+        let ws = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.screensDidSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
+            ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in MainActor.assumeIsolated { self?.pauseTimer() } }
+        }
+        for name in [NSWorkspace.screensDidWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
+            ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { guard let self, self.started else { return }; self.refresh(); self.startTimer() }
+            }
+        }
+    }
+
+    private func startTimer() {
+        guard screenTimer == nil else { return }
+        let t = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
-        t.tolerance = 0.5
+        t.tolerance = 1.5   // lets macOS batch the wake-up with other timers
         screenTimer = t
+    }
+
+    private func pauseTimer() {
+        screenTimer?.invalidate()
+        screenTimer = nil
     }
 
     func stop() {

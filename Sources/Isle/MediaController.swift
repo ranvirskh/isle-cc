@@ -21,7 +21,8 @@ final class MediaController: ObservableObject {
     private let helper = SystemNowPlayingHelper()
     private var scripting: PlayerScripting?
     private var artworkCache: (id: String, image: NSImage)?
-    private var helperArtwork: (bundle: String, image: NSImage)?
+    /// `key` is the track the helper sent it with, so a cover is never reused for a different song.
+    private var helperArtwork: (bundle: String, key: String?, image: NSImage)?
     private var pollTimer: Timer?
     private var observers: [NSObjectProtocol] = []
     private var lastIdentity: String?
@@ -136,7 +137,7 @@ final class MediaController: ObservableObject {
         // Artwork from the helper is kept per app, so Spotify mode can use it without a network fetch.
         if let b64 = snap.artworkBase64, let data = Data(base64Encoded: b64), let image = NSImage(data: data) {
             let bundle = snap.track?.bundleID ?? ""
-            helperArtwork = (bundle, image)
+            helperArtwork = (bundle, snap.track.map { artKey($0) }, image)
             if let t = snap.track, mode == .system || bundle == scripting?.bundleID {
                 let id = artKey(t)
                 pendingIdentity = id
@@ -203,7 +204,7 @@ final class MediaController: ObservableObject {
                 self.artworkCache = (artID, img)
                 self.remember(img, for: self.artKey(track))
             }
-        } else if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, artworkByTrack[artKey(track)] == nil {
+        } else if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, helperArtwork?.key == artKey(track), artworkByTrack[artKey(track)] == nil {
             remember(img, for: artKey(track))
         }
     }
@@ -222,6 +223,7 @@ final class MediaController: ObservableObject {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                     MainActor.assumeIsolated {
                         guard let self, self.now?.track.identity == wanted, self.artwork == nil else { return }
+                        Log.write("artwork: none yet for the current track (source \(self.now?.track.bundleID ?? "?"), helperArt \(self.helperArtwork == nil ? "none" : "present")); asking the helper again")
                         self.helper.send("artwork")
                     }
                 }
@@ -251,10 +253,10 @@ final class MediaController: ObservableObject {
     private func updatePolling() {
         let need = scripting != nil && (now?.isPlaying ?? false)
         if need, pollTimer == nil {
-            pollTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            pollTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
                 MainActor.assumeIsolated { self?.refreshFromScript() }
             }
-            pollTimer?.tolerance = 1
+            pollTimer?.tolerance = 4
         } else if !need {
             pollTimer?.invalidate()
             pollTimer = nil

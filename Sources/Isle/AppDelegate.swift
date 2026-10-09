@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         env.calendar.start()
         env.devices.start()
         env.agents.start()
+        env.usage.start()
         island.start()
         env.privacy.start()
         env.downloads.onFinished = { [weak island] name, bytes in

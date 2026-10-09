@@ -31,6 +31,6 @@ Tell it to run `./build.sh --test` after each change and to verify visuals with 
 5. Whether open and close feel smooth enough on your ProMotion display (measured at 60 fps in recordings).
 
 ## Known limits
-- Claude Code plan limits are not shown (no local source). Codex limits are, from its own logs.
+- Claude Code plan limits (5-hour, weekly) come from Anthropic's undocumented usage endpoint using the Claude Code token in your Keychain (v1.1, opt out in Settings). It may change or break. Codex limits come from its own logs.
 - System-mode shuffle is hidden (the system does not report it).
 - Atoll's cover-flying open animation and device/drag animations were not matched.

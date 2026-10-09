@@ -833,3 +833,35 @@ final class AgentsPrivacyTests: AgentsFixtureCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: stateFile.path), "nothing learned, nothing written")
     }
 }
+
+final class ClaudeUsageTests: XCTestCase {
+    func testParsesSessionAndWeeklyWindows() throws {
+        let json = #"{"five_hour":{"utilization":70.0,"resets_at":"2026-10-09T05:00:00.151628+00:00"},"seven_day":{"utilization":20.0,"resets_at":"2026-10-15T03:00:00+00:00"},"seven_day_opus":null,"extra":{"x":1}}"#
+        let now = Date()
+        let w = try XCTUnwrap(ClaudeUsage.parse(Data(json.utf8), now: now))
+        XCTAssertEqual(w.map(\.id), ["five_hour", "seven_day"])
+        XCTAssertEqual(w[0].usedPercent, 70)
+        XCTAssertEqual(w[0].windowMinutes, 300)
+        XCTAssertNotNil(w[0].resetsAt)
+        XCTAssertNotNil(w[1].resetsAt)
+        XCTAssertEqual(LimitFormat.windowName(w[1]), "Weekly")
+    }
+
+    func testUnexpectedShapeKeepsLastReading() {
+        XCTAssertNil(ClaudeUsage.parse(Data("[]".utf8), now: Date()))
+        XCTAssertNil(ClaudeUsage.parse(Data(#"{"error":"nope"}"#.utf8), now: Date()))
+    }
+
+    func testReadsOnlyTheAccessToken() {
+        let creds = #"{"claudeAiOauth":{"accessToken":"abc","refreshToken":"zzz","expiresAt":1}}"#
+        XCTAssertEqual(ClaudeUsage.accessToken(fromCredentials: Data(creds.utf8)), "abc")
+        XCTAssertNil(ClaudeUsage.accessToken(fromCredentials: Data("{}".utf8)))
+    }
+
+    func testSummary() {
+        let now = Date()
+        let w = [LimitWindow(id: "five_hour", usedPercent: 70, windowMinutes: 300, resetsAt: now.addingTimeInterval(60), observedAt: now, source: ""),
+                 LimitWindow(id: "seven_day", usedPercent: 19.6, windowMinutes: 10080, resetsAt: now.addingTimeInterval(60), observedAt: now, source: "")]
+        XCTAssertEqual(ClaudeUsage.summary(w, now: now), "5h 70% · wk 20%")
+    }
+}

@@ -21,14 +21,22 @@ final class IslandModel: ObservableObject {
     @Published var privacyLive = false
     /// How far the collapsed island extends past each side of the notch.
     var liveSide: CGFloat {
-        LiveLayout.side(mediaLive: mediaLive, privacyIcons: privacyLive ? privacy.active.count : 0, chargingLive: chargingLive, downloadLive: downloadLive)
+        LiveLayout.side(mediaLive: mediaLive, privacyIcons: privacyLive ? privacy.active.count : 0, chargingLive: chargingLive, downloadLive: downloadLive, usageLive: usagePercent != nil)
     }
+    /// Highest current Claude usage percentage, set only from the warning level up so the notch stays quiet otherwise.
+    @Published var usagePercent: Double?
     @Published var chargingLive = false
     @Published var download: DownloadSummary?
     var downloadLive: Bool { download != nil }
     @Published var battery = BatteryState(percent: nil, isCharging: false, onAC: false, hasBattery: false)
 
     init(screen: ScreenInfo) { self.screen = screen }
+
+    /// Extra height the collapsed island hangs below the notch while it shows live content, so the wings feel less thin.
+    /// Concave top corners on the collapsed island while it is wider than the notch, so it blends into the menu bar edge.
+    var liveFlare: CGFloat { 7 }
+
+    var liveThickness: CGFloat { screen.hasNotch ? 1 : 0 }
 
     var collapsedSize: CGSize { NotchGeometry.collapsedSize(screen) }
 
@@ -40,12 +48,17 @@ final class IslandModel: ObservableObject {
 
     var showingDropTargets: Bool { externalDrag && phase == .expanded }
 
+    /// The collapsed island including its live wings, independent of the current phase.
+    var collapsedLiveSize: CGSize {
+        CGSize(width: collapsedSize.width + 2 * liveSide, height: collapsedSize.height + liveThickness)
+    }
+
     var shapeSize: CGSize {
         switch phase {
         case .collapsed:
-            return liveActive ? CGSize(width: collapsedSize.width + 2 * liveSide, height: collapsedSize.height) : collapsedSize
+            return liveActive ? CGSize(width: collapsedSize.width + 2 * liveSide, height: collapsedSize.height + liveThickness) : collapsedSize
         case .popup: return popup?.kind == .nowPlaying ? bannerSize : NotchGeometry.popupContentSize(screen)
-        case .expanded: return showingDropTargets ? expandedSize(for: .airdrop) : expandedSize(for: tab)
+        case .expanded: return showingDropTargets ? expandedSize(for: .shelf) : expandedSize(for: tab)
         }
     }
 
@@ -59,7 +72,7 @@ final class IslandModel: ObservableObject {
 
     /// Largest shape the island can take on this screen; the window is sized to this once.
     var maxContentSize: CGSize {
-        let tabs: [IslandTab] = agentsEnabled ? IslandTab.allCases : [.home, .airdrop, .shelf]
+        let tabs: [IslandTab] = agentsEnabled ? IslandTab.allCases : [.home, .shelf]
         var w: CGFloat = max(NotchGeometry.popupContentSize(screen).width, bannerSize.width)
         var h: CGFloat = max(NotchGeometry.popupContentSize(screen).height, bannerSize.height)
         for t in tabs {
@@ -89,6 +102,7 @@ final class AppEnv: ObservableObject {
     let calendar = CalendarController()
     let devices = DevicesController()
     let agents = AgentsController()
+    let usage = ClaudeUsageController()
     let privacy = PrivacyMonitor()
     let downloads = DownloadsController()
     let weather = WeatherController()

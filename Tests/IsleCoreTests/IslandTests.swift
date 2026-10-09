@@ -359,7 +359,7 @@ final class LiveLayoutTests: XCTestCase {
     }
 
     func testMediaUsesTheCoverSide() {
-        XCTAssertEqual(LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false), 40)
+        XCTAssertEqual(LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false), LiveLayout.coverSide)
     }
 
     func testPrivacyIconsWidenTheIsland() {

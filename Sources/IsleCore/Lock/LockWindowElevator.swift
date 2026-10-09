@@ -56,6 +56,8 @@ public final class SkyLightLockWindowElevator: LockWindowElevator {
 
     public private(set) var unsupportedReason: String?
     private var space: Int32 = 0
+    /// Receives the raw result of every private call, so a silent failure on a new macOS shows up in the log.
+    public var diagnostics: ((String) -> Void)?
 
     /// Default lookup: dlopen SkyLight once, then dlsym.
     public static func systemLookup() -> SymbolLookup {
@@ -100,12 +102,16 @@ public final class SkyLightLockWindowElevator: LockWindowElevator {
         guard connection != 0 else { return false }
         if space == 0 {
             let created = spaceCreate(connection, 1, 0)
+            diagnostics?("SLSSpaceCreate(conn \(connection)) -> \(created)")
             guard created != 0 else { return false }
             space = created
-            _ = spaceSetLevel(connection, space, Self.lockScreenSpaceLevel)
-            _ = showSpaces(connection, [NSNumber(value: space)] as CFArray)
+            let level = spaceSetLevel(connection, space, Self.lockScreenSpaceLevel)
+            diagnostics?("SLSSpaceSetAbsoluteLevel -> \(level)")
+            let shown = showSpaces(connection, [NSNumber(value: space)] as CFArray)
+            diagnostics?("SLSShowSpaces -> \(shown)")
         }
-        _ = addWindows(connection, space, [NSNumber(value: Int32(truncatingIfNeeded: windowNumber))] as CFArray, 7)
+        let added = addWindows(connection, space, [NSNumber(value: Int32(truncatingIfNeeded: windowNumber))] as CFArray, 7)
+        diagnostics?("SLSSpaceAddWindowsAndRemoveFromSpaces(window \(windowNumber), space \(space)) -> \(added)")
         return true
     }
 

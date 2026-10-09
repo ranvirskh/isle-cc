@@ -34,3 +34,7 @@ Rules for plan-limit data (important):
 ## Agents tests and checks
 - Unit tests using synthetic fixture files (never real prompts): token, model, and project parsing per agent; malformed lines, a partial last line, unknown fields, and schema drift tolerated; missing agent folders; file rotation and truncation; incremental reading with offsets; the completion notice state machine (threshold, no duplicates, queueing with other pop-ups); a privacy test proving no prompt, response, or file-content text reaches the model, logs, or cache; "Limit data not available" shown when no trustworthy source exists; no network calls when the feature or its opt-in is off.
 - Run it for real: capture the Agents tab and the completion notice with screencapture, and verify against any agents actually used on this Mac (the Claude Code session building this app is a live test case) without printing session contents.
+
+
+## Amendment (v1.1)
+The owner explicitly chose to make an exception to the credential and undocumented-endpoint rules above for one feature: Claude plan usage. `ClaudeUsageController` reads the Claude Code OAuth token from the Keychain item "Claude Code-credentials" via `/usr/bin/security`, calls `https://api.anthropic.com/api/oauth/usage` every 5 minutes and when the island opens, keeps only percentages and reset times, and never stores or logs the token. It can be switched off in Settings. Nothing else may use another app's credentials.

@@ -103,14 +103,19 @@ final class DevicesController: ObservableObject {
     @objc private func deviceConnected(_ note: IOBluetoothUserNotification, device: IOBluetoothDevice) {
         // Registering replays every device that is already connected; only genuinely new connections get a pop-up.
         guard settings.popupBluetooth, Date().timeIntervalSince(registeredAt) > 3 else { return }
-        let name = device.name ?? "Bluetooth device"
-        let address = device.addressString ?? name
-        let kind = DeviceSymbols.kind(majorClass: Int(device.deviceClassMajor), minorClass: Int(device.deviceClassMinor))
-        // Battery levels show up in the profiler a moment after the connection is made.
+        // Phones, tablets and computers (Bluetooth major class 1 = computer, 2 = phone) are not accessories worth a pop-up.
+        let major = Int(device.deviceClassMajor)
+        if major == 1 || major == 2 { return }
+        let address = device.addressString ?? ""
+        let kind = DeviceSymbols.kind(majorClass: major, minorClass: Int(device.deviceClassMinor))
+        let knownName = device.name.flatMap { $0.isEmpty ? nil : $0 }
+        // The name and battery levels show up in the profiler a moment after the connection is made.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.fetchBattery(address: address, name: name) { battery in
+            self?.fetchDetails(address: address, name: knownName) { name, battery in
+                let lowered = name.lowercased()
+                if ["iphone", "ipad", "macbook", "imac"].contains(where: lowered.contains) { return }
                 let symbol = DeviceSymbols.firstAvailable(name: name, kind: kind)
-                let item = PopupItem(id: "bt-\(BluetoothProfilerParser.normalize(address: address))", kind: .bluetoothDevice,
+                let item = PopupItem(id: "bt-\(BluetoothProfilerParser.normalize(address: address.isEmpty ? name : address))", kind: .bluetoothDevice,
                                      symbol: symbol, title: name, subtitle: battery == nil ? "Connected" : "",
                                      batteries: battery?.readings ?? [])
                 self?.onPopup?(item)
@@ -118,7 +123,8 @@ final class DevicesController: ObservableObject {
         }
     }
 
-    private func fetchBattery(address: String, name: String, _ done: @escaping @MainActor (DeviceBattery?) -> Void) {
+    /// Resolves the display name (the connect notification often has none yet) and the battery from the profiler.
+    private func fetchDetails(address: String, name: String?, _ done: @escaping @MainActor (String, DeviceBattery?) -> Void) {
         DispatchQueue.global(qos: .utility).async {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
@@ -126,17 +132,21 @@ final class DevicesController: ObservableObject {
             let out = Pipe()
             p.standardOutput = out
             p.standardError = FileHandle.nullDevice
-            var result: DeviceBattery?
+            var battery: DeviceBattery?
+            var resolved = name
             do {
                 try p.run()
                 let data = out.fileHandleForReading.readDataToEndOfFile()
                 p.waitUntilExit()
+                let key = BluetoothProfilerParser.normalize(address: address)
+                if resolved == nil { resolved = BluetoothProfilerParser.names(data)[key] }
                 let parsed = BluetoothProfilerParser.parse(data)
-                result = parsed.byAddress[BluetoothProfilerParser.normalize(address: address)] ?? parsed.byName[name]
+                battery = parsed.byAddress[key] ?? resolved.flatMap { parsed.byName[$0] }
             } catch {
                 Log.write("system_profiler failed: \(error.localizedDescription)")
             }
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(result) } }
+            let final = resolved ?? IOBluetoothDevice(addressString: address)?.nameOrAddress ?? "Bluetooth device"
+            DispatchQueue.main.async { MainActor.assumeIsolated { done(final, battery) } }
         }
     }
 }

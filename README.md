@@ -8,7 +8,7 @@ A macOS dynamic-island utility for the notch: now playing with synced lyrics, ca
     ./build.sh --install  # build, copy to /Applications, relaunch
     ./build.sh --debug    # debug build
 
-Developer flags: `--demo` (fake playback), `--simulate-lock` (lock card in a normal window), `--expand [home|airdrop|shelf|agents]`, `--debug-control` (scripted control), `--lyrics-probe "Title|Artist|Album|Seconds"`.
+Developer flags: `--demo` (fake playback), `--simulate-lock` (lock card in a normal window), `--expand [home|shelf|agents]`, `--debug-control` (scripted control), `--lyrics-probe "Title|Artist|Album|Seconds"`.
 
 ## Permissions
 Calendar (agenda), Automation (Spotify / Music control), Bluetooth (device pop-ups). Nothing else. Not sandboxed.
@@ -23,7 +23,7 @@ Off by default. When on, the song's title, artist, album and duration are sent t
 Off by default. Third-party windows cannot normally appear on the lock screen, so Isle uses private SkyLight window-space functions, loaded with dlopen/dlsym at runtime inside `LockWindowElevator.swift` only. If a symbol is missing the feature disables itself and Settings says so. The card ignores all mouse input, never becomes key, and has no controls. **The real lock screen is unverified until you check it**: play a song, lock with Control-Command-Q, and look near the bottom center.
 
 ## AI agents (privacy)
-Off by default. Reads only local metadata from Claude Code, Codex, OpenCode and Copilot session files: timestamps, model names, token counts, project folder name, session id. Never prompt text, responses, file contents or tool output. No network access. Plan limits appear only when the agent itself reports them (Codex logs them); otherwise "Limit data not available".
+Off by default. Reads only local metadata from Claude Code, Codex, OpenCode and Copilot session files: timestamps, model names, token counts, project folder name, session id. Never prompt text, responses, file contents or tool output. The agents scan itself has no network access. Plan limits appear only when the agent itself reports them (Codex logs them); otherwise "Limit data not available".
 
 ## Extra live activities and widgets
 - **Cover and equalizer** beside the notch while playing; **mic / camera / screen-recording dots** (read from system signals, no content); **charging** readout; **browser downloads** (watches ~/Downloads for partial-file names and sizes only; macOS asks for Files and Folders access).
@@ -34,6 +34,9 @@ Off by default. Reads only local metadata from Claude Code, Codex, OpenCode and 
 
 ## Animations
 Settings > Animations: master switch, style (Smooth / Snappy / Bouncy / Minimal), speed, and a switch for each group (island opening, content fade, tabs, artwork/media, lyrics, banner flip, button press). Reduce Motion is respected. All timings live in `Sources/IsleCore/Motion.swift`.
+
+## Claude plan usage
+On by default (Settings > Agents). Shows 5-hour and weekly usage as a header chip, and as a percentage in the collapsed notch once either passes 60%. It reads your Claude Code sign-in token from the Keychain (macOS asks once) and calls Anthropic's usage endpoint every 5 minutes and when the island opens. Only percentages and reset times are kept; the token is never stored or logged. The endpoint is undocumented and may change.
 
 ## Known limits
 - The next/previous controls in System mode depend on the playing app; shuffle is hidden there.

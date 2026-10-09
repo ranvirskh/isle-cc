@@ -201,7 +201,7 @@ struct SettingsView: View {
 
             Section("AI agents") {
                 Toggle("Show AI agents tab", isOn: binding({ settings.agentsEnabled }, { settings.agentsEnabled = $0 }))
-                Text("Reads only metadata from each agent's local session files on this Mac: timestamps, model names, token counts, project folder name and session id. Never prompt text, responses or file contents. No network access.")
+                Text("Reads only metadata from each agent's local session files on this Mac: timestamps, model names, token counts, project folder name and session id. Never prompt text, responses or file contents. The scan itself uses no network.")
                     .font(.caption).foregroundStyle(.secondary)
                 if settings.agentsEnabled {
                     let detected = env.agents.detected()
@@ -221,6 +221,9 @@ struct SettingsView: View {
                             Text("Only if it ran at least \(settings.agentNoticeMinutes.formatted()) min")
                         }
                     }
+                    Toggle("Show Claude plan usage (5-hour and weekly) in the header and notch", isOn: binding({ settings.claudeUsage }, { settings.claudeUsage = $0 }))
+                    Text("Reads your Claude Code sign-in token from the Keychain and asks Anthropic for your usage every 5 minutes. Nothing else is sent or stored.")
+                        .font(.caption).foregroundStyle(.secondary)
                     Toggle("Show highest limit in the header", isOn: binding({ settings.agentHeaderChip }, { settings.agentHeaderChip = $0 }))
                     Text("Plan limits appear only when an agent itself reports them. Otherwise the card says \"Limit data not available\".")
                         .font(.caption).foregroundStyle(.secondary)

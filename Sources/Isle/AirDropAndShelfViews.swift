@@ -36,24 +36,18 @@ func airDrop(providers: [NSItemProvider]) -> Bool {
     return handled
 }
 
-struct AirDropView: View {
+/// Compact AirDrop target that sits beside the shelf: drop anything on it and the system AirDrop sheet opens.
+struct AirDropColumn: View {
     @State private var targeted = false
 
     var body: some View {
-        HStack(spacing: 18) {
-            DropZone(symbol: "dot.radiowaves.left.and.right", title: "Drop to AirDrop",
-                     subtitle: "Files, folders, links or text", targeted: targeted)
+        VStack(spacing: 8) {
+            DropZone(symbol: "dot.radiowaves.left.and.right", title: "AirDrop", subtitle: "Drop to send", targeted: targeted)
                 .onDrop(of: dropTypes, isTargeted: $targeted) { airDrop(providers: $0) }
-            VStack(alignment: .leading, spacing: 10) {
-                Text("AirDrop").font(.system(size: 15, weight: .semibold))
-                Text("Drop something and the system AirDrop sheet opens so you can pick a recipient. macOS doesn't tell apps which devices are nearby, so Isle can't list them.")
-                    .font(.system(size: 11)).foregroundStyle(.white.opacity(0.55)).fixedSize(horizontal: false, vertical: true)
-                Button { AirDrop.openInFinder() } label: { Label("Open AirDrop in Finder", systemImage: "folder") }
-                    .buttonStyle(.bordered).controlSize(.small)
-            }
-            .frame(width: 190, alignment: .leading)
+            Button { AirDrop.openInFinder() } label: { Label("Open in Finder", systemImage: "folder") }
+                .buttonStyle(.bordered).controlSize(.small)
         }
-        .foregroundStyle(.white)
+        .frame(width: 170)
     }
 }
 
@@ -105,6 +99,17 @@ struct DropTargetsView: View {
 }
 
 struct ShelfView: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            AirDropColumn()
+            Divider().overlay(Color.white.opacity(0.12))
+            ShelfColumn()
+        }
+        .foregroundStyle(.white)
+    }
+}
+
+struct ShelfColumn: View {
     @EnvironmentObject var shelf: ShelfController
     @State private var targeted = false
 

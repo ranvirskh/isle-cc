@@ -66,7 +66,7 @@ final class IslandController {
         self.panel = panel
 
         let root = IslandRootView().environmentObject(env.weather).environmentObject(model).environmentObject(env).environmentObject(env.media)
-            .environmentObject(env.calendar).environmentObject(env.devices).environmentObject(env.agents)
+            .environmentObject(env.calendar).environmentObject(env.devices).environmentObject(env.agents).environmentObject(env.usage)
             .environmentObject(env.shelf).environmentObject(settings)
         hosting = NSHostingView(rootView: AnyView(root))
         hosting.sizingOptions = []
@@ -106,6 +106,8 @@ final class IslandController {
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.fullScreen.$isFullScreen.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
+        env.usage.objectWillChange
+            .sink { [weak self] _ in DispatchQueue.main.async { MainActor.assumeIsolated { self?.updateLive() } } }.store(in: &cancellables)
         updateLive()
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateReduceMotion() }
@@ -125,9 +127,10 @@ final class IslandController {
         case .brief: charging = chargingBrief && battery.isCharging
         }
         let download = settings.downloadsIndicator ? env.downloads.summary : nil
-        let live = media || privacy || charging || download != nil
+        let usage = env.usage.pillPercent
+        let live = media || privacy || charging || download != nil || usage != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
-                || env.privacy.state != model.privacy || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
+                || env.privacy.state != model.privacy || usage != model.usagePercent || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
             model.privacyLive = privacy
@@ -135,6 +138,7 @@ final class IslandController {
             model.download = download
             model.battery = battery
             model.privacy = env.privacy.state
+            model.usagePercent = usage
             model.liveActive = live
         }
     }
