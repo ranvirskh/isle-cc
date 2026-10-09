@@ -21,9 +21,11 @@ final class IslandModel: ObservableObject {
     @Published var privacyLive = false
     /// How far the collapsed island extends past each side of the notch.
     var liveSide: CGFloat {
-        LiveLayout.side(mediaLive: mediaLive, privacyIcons: privacyLive ? privacy.active.count : 0, chargingLive: chargingLive)
+        LiveLayout.side(mediaLive: mediaLive, privacyIcons: privacyLive ? privacy.active.count : 0, chargingLive: chargingLive, downloadLive: downloadLive)
     }
     @Published var chargingLive = false
+    @Published var download: DownloadSummary?
+    var downloadLive: Bool { download != nil }
     @Published var battery = BatteryState(percent: nil, isCharging: false, onAC: false, hasBattery: false)
 
     init(screen: ScreenInfo) { self.screen = screen }
@@ -88,6 +90,7 @@ final class AppEnv: ObservableObject {
     let devices = DevicesController()
     let agents = AgentsController()
     let privacy = PrivacyMonitor()
+    let downloads = DownloadsController()
     let fullScreen = FullScreenMonitor()
     let shelf = ShelfController()
     let settings = Settings.shared

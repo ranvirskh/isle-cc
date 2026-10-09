@@ -7,12 +7,12 @@ public enum LiveLayout {
 
     /// `privacyIcons` is how many mic / camera / screen dots are showing. `chargingText` is true when the charging
     /// readout takes the right slot (it yields to the equalizer when music is playing).
-    public static func side(mediaLive: Bool, privacyIcons: Int, chargingLive: Bool) -> CGFloat {
+    public static func side(mediaLive: Bool, privacyIcons: Int, chargingLive: Bool, downloadLive: Bool = false) -> CGFloat {
         var right: CGFloat = 12
         right += CGFloat(privacyIcons) * 15
-        if mediaLive { right += 22 } else if chargingLive { right += 30 }
+        if mediaLive { right += 22 } else if chargingLive || downloadLive { right += downloadLive ? 40 : 30 }
         let left: CGFloat = mediaLive ? coverSide : 0
-        let hasRightContent = privacyIcons > 0 || mediaLive || chargingLive
+        let hasRightContent = privacyIcons > 0 || mediaLive || chargingLive || downloadLive
         return max(left, hasRightContent ? right : 0, minimumSide)
     }
 }

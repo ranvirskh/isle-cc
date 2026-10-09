@@ -377,3 +377,63 @@ final class LiveLayoutTests: XCTestCase {
         for m in ChargingIndicatorMode.allCases { XCTAssertEqual(ChargingIndicatorMode(rawValue: m.rawValue), m) }
     }
 }
+
+final class DownloadTrackerTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_791_500_000)
+
+    func testRecognisesBrowserPartialFiles() {
+        for p in ["/d/a.zip.crdownload", "/d/a.zip.download", "/d/a.zip.part", "/d/a.zip.opdownload", "/d/A.ZIP.CRDOWNLOAD"] {
+            XCTAssertTrue(DownloadTracker.isPartial(p), p)
+        }
+        XCTAssertFalse(DownloadTracker.isPartial("/d/a.zip"))
+        XCTAssertFalse(DownloadTracker.isPartial("/d/notes.download.txt"))
+    }
+
+    func testFinalNameStripsTheSuffix() {
+        XCTAssertEqual(DownloadTracker.finalName(forPartial: "/d/Report 2026.pdf.crdownload"), "Report 2026.pdf")
+        XCTAssertEqual(DownloadTracker.finalName(forPartial: "/d/.crdownload"), ".crdownload")
+    }
+
+    func testStartGrowFinish() {
+        var t = DownloadTracker()
+        XCTAssertEqual(t.update(path: "/d/a.zip.crdownload", size: 1_000, now: t0), [.started(name: "a.zip")])
+        XCTAssertEqual(t.update(path: "/d/a.zip.crdownload", size: 5_000_000, now: t0.addingTimeInterval(2)), [])
+        let s = t.summary(now: t0.addingTimeInterval(2))
+        XCTAssertEqual(s?.count, 1)
+        XCTAssertEqual(s?.bytes, 5_000_000)
+        XCTAssertGreaterThan(s?.rate ?? 0, 1_000_000)
+        let done = t.update(path: "/d/a.zip.crdownload", size: nil, finalExists: true, now: t0.addingTimeInterval(3))
+        XCTAssertEqual(done, [.finished(name: "a.zip", bytes: 5_000_000, duration: 3)])
+        XCTAssertNil(t.summary(now: t0.addingTimeInterval(3)))
+    }
+
+    func testCancelledWhenNoFinalFile() {
+        var t = DownloadTracker()
+        t.update(path: "/d/a.zip.crdownload", size: 10, now: t0)
+        XCTAssertEqual(t.update(path: "/d/a.zip.crdownload", size: nil, finalExists: false, now: t0.addingTimeInterval(5)), [.cancelled(name: "a.zip")])
+    }
+
+    func testTinyDownloadsDoNotFlash() {
+        var t = DownloadTracker()
+        t.update(path: "/d/a.png.crdownload", size: 10, now: t0)
+        XCTAssertTrue(t.update(path: "/d/a.png.crdownload", size: nil, finalExists: true, now: t0.addingTimeInterval(0.3)).isEmpty)
+    }
+
+    func testStalledDownloadsExpireAndTimerDeadlineIsReported() {
+        var t = DownloadTracker()
+        t.update(path: "/d/a.zip.crdownload", size: 10, now: t0)
+        XCTAssertEqual(t.nextExpiry(), t0.addingTimeInterval(20))
+        XCTAssertNotNil(t.summary(now: t0.addingTimeInterval(19)))
+        XCTAssertNil(t.summary(now: t0.addingTimeInterval(21)))
+        t.expireStale(now: t0.addingTimeInterval(21))
+        XCTAssertNil(t.nextExpiry())
+    }
+
+    func testIgnoresNonPartialPathsAndFormatsSizes() {
+        var t = DownloadTracker()
+        XCTAssertTrue(t.update(path: "/d/a.zip", size: 10, now: t0).isEmpty)
+        XCTAssertEqual(DownloadTracker.format(bytes: 950), "950 B")
+        XCTAssertEqual(DownloadTracker.format(bytes: 42_000_000), "42 MB")
+        XCTAssertEqual(DownloadTracker.format(bytes: 2_500_000_000), "2.5 GB")
+    }
+}

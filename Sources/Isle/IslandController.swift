@@ -100,6 +100,8 @@ final class IslandController {
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.devices.$battery.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] b in MainActor.assumeIsolated { self?.batteryChanged(b) } }.store(in: &cancellables)
+        env.downloads.$summary.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.privacy.$state.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.fullScreen.$isFullScreen.removeDuplicates().receive(on: DispatchQueue.main)
@@ -122,13 +124,15 @@ final class IslandController {
         case .whileCharging: charging = battery.hasBattery && battery.isCharging
         case .brief: charging = chargingBrief && battery.isCharging
         }
-        let live = media || privacy || charging
+        let download = settings.downloadsIndicator ? env.downloads.summary : nil
+        let live = media || privacy || charging || download != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
-                || env.privacy.state != model.privacy || charging != model.chargingLive || battery != model.battery else { return }
+                || env.privacy.state != model.privacy || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
             model.privacyLive = privacy
             model.chargingLive = charging
+            model.download = download
             model.battery = battery
             model.privacy = env.privacy.state
             model.liveActive = live

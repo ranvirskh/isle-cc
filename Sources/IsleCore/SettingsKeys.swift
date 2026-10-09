@@ -24,6 +24,7 @@ public enum SettingsKey {
     public static let animationPreset = "animationPreset"         // Motion.Preset, default smooth
     public static let animationsEnabled = "animationsEnabled"     // master switch, default true
     public static let animationsOff = "animationsOff"             // [Motion.Category.rawValue] switched off
+    public static let downloadsIndicator = "downloadsIndicator"   // watch ~/Downloads for browser downloads, default true
     public static let theme = "theme"                             // IslandTheme, default classic
     public static let chargingIndicator = "chargingIndicator"     // ChargingIndicatorMode, default whileCharging
     public static let privacyIndicator = "privacyIndicator"       // mic / camera / screen recording dots, default true
@@ -54,6 +55,7 @@ public enum SettingsKey {
         animationPreset: Motion.Preset.smooth.rawValue,
         animationsEnabled: true,
         animationsOff: [String](),
+        downloadsIndicator: true,
         theme: IslandTheme.classic.rawValue,
         chargingIndicator: ChargingIndicatorMode.whileCharging.rawValue,
         privacyIndicator: true,

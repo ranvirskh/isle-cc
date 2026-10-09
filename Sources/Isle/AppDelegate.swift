@@ -37,6 +37,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         env.agents.start()
         island.start()
         env.privacy.start()
+        env.downloads.onFinished = { [weak island] name, bytes in
+            island?.enqueuePopup(PopupItem(id: "dl-\(name)-\(Int(Date().timeIntervalSince1970))", kind: .download, symbol: "arrow.down.circle.fill",
+                                           title: "Download finished", subtitle: "\(name) · \(DownloadTracker.format(bytes: bytes))"))
+        }
+        env.downloads.start()
         env.fullScreen.start { [weak island] in island?.model.screen ?? ScreenInfo(NSScreen.main ?? NSScreen.screens[0]) }
         lockController.start()
         Log.write("lock feature: supported=\(lockController.isSupported) \(lockController.unsupportedReason ?? "")")

@@ -391,7 +391,9 @@ struct LiveActivityView: View {
     var body: some View {
         HStack(spacing: 0) {
             Group {
-                if !model.mediaLive, model.chargingLive {
+                if !model.mediaLive, model.downloadLive {
+                    Image(systemName: "arrow.down.circle.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color(red: 0.4, green: 0.8, blue: 1))
+                } else if !model.mediaLive, model.chargingLive {
                     Image(systemName: "bolt.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(Color(red: 0.35, green: 0.9, blue: 0.5))
                 } else if model.mediaLive {
                     Group {
@@ -410,7 +412,10 @@ struct LiveActivityView: View {
             Spacer(minLength: 0)
             HStack(spacing: 5) {
                 PrivacyDots(state: model.privacy)
-                if !model.mediaLive, model.chargingLive, let p = model.battery.percent {
+                if !model.mediaLive, let d = model.download {
+                    Text(DownloadTracker.format(bytes: d.bytes)).font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.9)).lineLimit(1).fixedSize()
+                } else if !model.mediaLive, model.chargingLive, let p = model.battery.percent {
                     Text("\(p)%").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(.white.opacity(0.9))
                 }
                 if model.mediaLive {
@@ -423,7 +428,7 @@ struct LiveActivityView: View {
         .frame(maxHeight: .infinity)
         .padding(.bottom, model.isNotched ? 2 : 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel((model.privacy.active.map(\.title) + (model.chargingLive ? ["Charging \(model.battery.percent ?? 0) percent"] : [])).joined(separator: ", "))
+        .accessibilityLabel((model.privacy.active.map(\.title) + (model.chargingLive ? ["Charging \(model.battery.percent ?? 0) percent"] : []) + (model.download.map { ["Downloading \($0.firstName)"] } ?? [])).joined(separator: ", "))
     }
 }
 

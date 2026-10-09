@@ -115,6 +115,10 @@ final class Settings: ObservableObject {
         get { Set((d.stringArray(forKey: SettingsKey.animationsOff) ?? []).compactMap(Motion.Category.init(rawValue:))) }
         set { set(newValue.map(\.rawValue).sorted(), SettingsKey.animationsOff) }
     }
+    var downloadsIndicator: Bool {
+        get { d.bool(forKey: SettingsKey.downloadsIndicator) }
+        set { set(newValue, SettingsKey.downloadsIndicator) }
+    }
     var theme: IslandTheme {
         get { IslandTheme(rawValue: d.string(forKey: SettingsKey.theme) ?? "") ?? .classic }
         set { set(newValue.rawValue, SettingsKey.theme) }
