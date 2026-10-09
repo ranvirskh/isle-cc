@@ -96,7 +96,7 @@ struct PlayerColumn: View {
                 .lineLimit(1)
                 .id("artist-\(now.track.identity)")
                 .transition(.asymmetric(insertion: .offset(y: 8).combined(with: .opacity), removal: .opacity))
-            if settings.lyricsEnabled {
+            if showsLyricSlot {
                 LyricLineView(font: .system(size: 12, weight: .medium), color: style.accent)
                     .frame(height: 16)
             }
@@ -106,6 +106,18 @@ struct PlayerColumn: View {
         }
         .foregroundStyle(.white)
         .animation(Motion.ease(Motion.trackChangeDuration, .media), value: now.track.identity)
+        .animation(Motion.ease(0.25, .lyrics), value: showsLyricSlot)
+    }
+
+    /// The lyric row is kept while lyrics are loading or synced, and removed when this song has none (unsynced,
+    /// instrumental or not found), so the player does not leave an empty gap under the artist.
+    private var showsLyricSlot: Bool {
+        guard settings.lyricsEnabled else { return false }
+        guard let snap = media.lyrics, snap.trackIdentity == now.track.identity else { return true }
+        switch snap.state {
+        case .loading, .timed: return true
+        case .untimed, .instrumental, .unavailable: return false
+        }
     }
 }
 
