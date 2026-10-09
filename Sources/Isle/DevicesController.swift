@@ -106,6 +106,11 @@ final class DevicesController: ObservableObject {
 
     // MARK: Bluetooth
 
+    @objc private func deviceDisconnected(_ note: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+        note.unregister()
+        if let address = device.addressString { seenConnected.remove(BluetoothProfilerParser.normalize(address: address)) }
+    }
+
     @objc private func deviceConnected(_ note: IOBluetoothUserNotification, device: IOBluetoothDevice) {
         // Registering replays every device that is already connected; only genuinely new connections get a pop-up.
         guard settings.popupBluetooth, Date().timeIntervalSince(registeredAt) > 3 else { return }
@@ -114,6 +119,7 @@ final class DevicesController: ObservableObject {
         if major == 1 || major == 2 { return }
         let address = device.addressString ?? ""
         let kind = DeviceSymbols.kind(majorClass: major, minorClass: Int(device.deviceClassMinor))
+        device.register(forDisconnectNotification: self, selector: #selector(deviceDisconnected(_:device:)))
         let knownName = device.name.flatMap { $0.isEmpty ? nil : $0 }
         let eventKey = address.isEmpty ? "" : BluetoothProfilerParser.normalize(address: address)
         let now = Date()
@@ -127,12 +133,14 @@ final class DevicesController: ObservableObject {
         // The name, model and battery levels show up in the profiler a moment after the connection is made, so look
         // again a couple of times if the device is not listed yet.
         Log.write("bluetooth: connect event name \(knownName ?? "nil") address \(address.isEmpty ? "none" : "present")")
-        resolve(address: address, knownName: knownName, attempt: 0, delays: [0.4, 0.8, 1.4]) { [weak self] info, battery in
-            let name = knownName ?? info?.name ?? IOBluetoothDevice(addressString: address)?.nameOrAddress ?? "Bluetooth device"
+        resolve(address: address, knownName: knownName, attempt: 0, delays: [0.4, 0.8, 1.4]) { [weak self] info, battery, _ in
+            // Not listed as connected (or already shown for this connection): nothing really connected, so no pop-up.
+            guard let info else { return }
+            let name = knownName ?? info.name
             let lowered = name.lowercased()
             if ["iphone", "ipad", "macbook", "imac"].contains(where: lowered.contains) { return }
             // What the device is called by its maker, so AirPods named "Slatt" still get the AirPods icon.
-            let model = DeviceSymbols.appleAudioName(vendorID: info?.vendorID, productID: info?.productID, hasCase: info?.hasCase ?? false)
+            let model = DeviceSymbols.appleAudioName(vendorID: info.vendorID, productID: info.productID, hasCase: info.hasCase)
             let symbolName = model ?? name
             let symbol = DeviceSymbols.firstAvailable(name: symbolName, kind: kind)
             // Events for one connection resolve at about the same moment; only the first gets a pop-up.
@@ -141,7 +149,7 @@ final class DevicesController: ObservableObject {
             if let self, Date().timeIntervalSince(self.lastAnyPopup) < 4 { return }
             self?.lastPopup[shownKey] = Date()
             self?.lastAnyPopup = Date()
-            Log.write("bluetooth: connected \(name) model \(model ?? "-") vendor \(info?.vendorID.map { String($0, radix: 16) } ?? "-")")
+            Log.write("bluetooth: connected \(name) model \(model ?? "-") vendor \(info.vendorID.map { String($0, radix: 16) } ?? "-")")
             let item = PopupItem(id: "bt-\(BluetoothProfilerParser.normalize(address: address.isEmpty ? name : address))", kind: .bluetoothDevice,
                                  symbol: symbol, title: name, subtitle: battery == nil ? (model ?? "Connected") : "",
                                  batteries: battery?.readings ?? [])
@@ -150,22 +158,22 @@ final class DevicesController: ObservableObject {
     }
 
     private func resolve(address: String, knownName: String?, attempt: Int, delays: [Double],
-                         _ done: @escaping @MainActor (BluetoothProfilerParser.DeviceInfo?, DeviceBattery?) -> Void) {
+                         _ done: @escaping @MainActor (BluetoothProfilerParser.DeviceInfo?, DeviceBattery?, String?) -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + delays[attempt]) { [weak self] in
             self?.profile(address: address) { info, battery, all in
                 guard let self else { return }
                 var info = info, battery = battery
+                var key = all[BluetoothProfilerParser.normalize(address: address)] != nil ? BluetoothProfilerParser.normalize(address: address) : nil
                 // No usable address (or not listed under it): the one device that is connected now and was not before.
-                if info == nil {
+                if info == nil || key == nil {
                     let fresh = all.filter { $0.value.connected && !self.seenConnected.contains($0.key) }
-                    if fresh.count == 1, let match = fresh.first {
-                        info = match.value
-                        battery = match.value.battery
-                    }
+                    if fresh.count == 1, let match = fresh.first { info = match.value; battery = match.value.battery; key = match.key }
                 }
-                if (info?.connected == true) || attempt + 1 >= delays.count {
-                    if let key = info.flatMap({ i in all.first(where: { $0.value == i })?.key }) { self.seenConnected.insert(key) }
-                    done(info, battery)
+                if info?.connected == true, let key {
+                    // Only a device that was not connected a moment ago is a new connection; AirPods raise several events.
+                    if self.seenConnected.insert(key).inserted { done(info, battery, key) } else { done(nil, nil, key) }
+                } else if attempt + 1 >= delays.count {
+                    done(nil, nil, nil)
                 } else {
                     self.resolve(address: address, knownName: knownName, attempt: attempt + 1, delays: delays, done)
                 }

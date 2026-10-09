@@ -65,9 +65,23 @@ final class PrivacyMonitor: ObservableObject {
         micRunning = micDevices.contains { Self.audioRunning($0) }
         camRunning = camDevices.contains { Self.cameraRunning($0) }
         let indicators = Self.statusIndicatorWindowCount()
-        let new = PrivacyState(microphone: micRunning, camera: camRunning,
-                               screen: ScreenRecordingDetector.isRecording(statusIndicatorWindows: indicators, microphone: micRunning, camera: camRunning))
+        var screen = ScreenRecordingDetector.isRecording(statusIndicatorWindows: indicators, microphone: micRunning, camera: camRunning)
+        // macOS does not say who is capturing, and utilities with an audio mixer or music bars (Vorssaint and similar) keep
+        // the system indicator on while idle. While one of them is running, the purple dot would only be noise.
+        if screen, Self.audioUtilityRunning() { screen = false }
+        let new = PrivacyState(microphone: micRunning, camera: camRunning, screen: screen)
         if new != state { state = new }
+    }
+
+    /// Apps known to hold a system-audio capture open (mixers, equalisers, notch utilities with music bars).
+    private static let audioUtilityNames = ["vorssaint", "boring.notch", "boringnotch", "notchnook", "eqmac", "soundsource",
+                                           "audio hijack", "loopback", "background music", "mediamate", "alcove"]
+
+    private static func audioUtilityRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains { app in
+            let id = (app.bundleIdentifier ?? "").lowercased(), name = (app.localizedName ?? "").lowercased()
+            return audioUtilityNames.contains { id.contains($0) || name.contains($0) }
+        }
     }
 
     private static func statusIndicatorWindowCount() -> Int {
