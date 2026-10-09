@@ -120,7 +120,7 @@ struct LyricLineView: View {
             let line = media.currentLyric(at: ctx.date).current
             ZStack(alignment: .leading) {
                 if let line {
-                    MarqueeText(text: line.text, font: font, color: color)
+                    MarqueeText(text: line.text, font: font, color: color, active: playing && model.phase != .collapsed)
                         .id(line.time)
                         .transition(.asymmetric(insertion: .offset(y: Motion.lyricLineOffset).combined(with: .opacity),
                                                 removal: .offset(y: -Motion.lyricLineOffset).combined(with: .opacity)))
@@ -138,9 +138,12 @@ struct MarqueeText: View {
     let text: String
     let font: Font
     let color: Color
+    /// False while paused (or the island is closed): the line returns to its starting position and waits.
+    let active: Bool
     @State private var textWidth: CGFloat = 0
     @State private var containerWidth: CGFloat = 0
     @State private var offset: CGFloat = 0
+    @State private var generation = 0
 
     var body: some View {
         GeometryReader { geo in
@@ -149,17 +152,26 @@ struct MarqueeText: View {
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .fixedSize()
-                .background(GeometryReader { t in Color.clear.onAppear { textWidth = t.size.width; containerWidth = geo.size.width; start() } })
+                .background(GeometryReader { t in Color.clear.onAppear { textWidth = t.size.width; containerWidth = geo.size.width; update() } })
                 .offset(x: offset)
         }
+        .onChange(of: active) { _, _ in update() }
         .accessibilityLabel(text)
     }
 
-    private func start() {
+    private func update() {
+        generation += 1
+        let mine = generation
+        guard active else {
+            // Paused: glide back to the start (replaces the running scroll animation).
+            withAnimation(Motion.ease(0.3, .lyrics)) { offset = 0 }
+            return
+        }
         guard textWidth > containerWidth, containerWidth > 0, !Motion.reduceMotion, Motion.isOn(.lyrics) else { return }
         let distance = textWidth - containerWidth + 8
         let duration = Double(distance) / Motion.lyricMarqueeSpeed
         DispatchQueue.main.asyncAfter(deadline: .now() + Motion.lyricMarqueePause) {
+            guard mine == generation, active else { return }
             withAnimation(.linear(duration: duration)) { offset = -distance }
         }
     }

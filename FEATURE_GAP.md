@@ -7,6 +7,11 @@ Isle already has: media with synced lyrics, calendar agenda with day navigation,
 pop-ups, AI agents tab, lock screen media card, mic/camera/screen-recording indicator, cover and equalizer live activity,
 song-change tab, per-animation options.
 
+## Status after you chose
+
+Built: charging live activity (5 s), downloads live activity, weather (device location or typed city), Minimalistic and
+Frutiger Aero themes, lock screen widgets (weather, charging, Bluetooth batteries). Not chosen and not built: everything else in the table.
+
 ## Missing features
 
 | # | Feature | What it is | Needs | Difficulty | Risk |
