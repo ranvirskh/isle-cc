@@ -302,18 +302,21 @@ struct AgendaView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Button { calendar.openCalendarApp() } label: {
-                HStack(spacing: 4) {
-                    Text(calendar.agenda.day == .today ? "Today" : "Tomorrow")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text(Date.now.formatted(.dateTime.weekday(.abbreviated).day()))
-                        .font(.system(size: 12)).foregroundStyle(.white.opacity(0.5))
-                    Spacer()
-                    Image(systemName: "calendar").font(.system(size: 11)).foregroundStyle(.white.opacity(0.4))
+            HStack(spacing: 2) {
+                Button { calendar.resetDay() } label: {
+                    HStack(spacing: 4) {
+                        Text(dayTitle).font(.system(size: 12, weight: .semibold))
+                        Text(isOtherDay ? dayDate.formatted(.dateTime.month(.abbreviated).day()) : dayDate.formatted(.dateTime.weekday(.abbreviated).day()))
+                            .font(.system(size: 12)).foregroundStyle(.white.opacity(0.5))
+                    }
                 }
+                .buttonStyle(.plain)
+                .help("Back to today")
+                Spacer(minLength: 2)
+                dayButton("chevron.left", "Previous day") { calendar.shiftDay(-1) }
+                dayButton("chevron.right", "Next day") { calendar.shiftDay(1) }
+                dayButton("calendar", "Open Calendar") { calendar.openCalendarApp() }
             }
-            .buttonStyle(.plain)
-            .help("Open Calendar")
             switch calendar.access {
             case .denied:
                 VStack(alignment: .leading, spacing: 6) {
@@ -338,6 +341,31 @@ struct AgendaView: View {
             }
         }
         .foregroundStyle(.white)
+    }
+}
+
+extension AgendaView {
+    private var isOtherDay: Bool { if case .other = calendar.agenda.day { return true }; return false }
+    private var dayDate: Date {
+        switch calendar.agenda.day {
+        case .today: return Date()
+        case .tomorrow: return Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        case .other(let d): return d
+        }
+    }
+    private var dayTitle: String {
+        switch calendar.agenda.day {
+        case .today: return "Today"
+        case .tomorrow: return "Tomorrow"
+        case .other(let d): return Calendar.current.isDateInYesterday(d) ? "Yesterday" : d.formatted(.dateTime.weekday(.wide))
+        }
+    }
+    private func dayButton(_ symbol: String, _ label: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.55))
+                .frame(width: 20, height: 20).contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle()).help(label).accessibilityLabel(label)
     }
 }
 

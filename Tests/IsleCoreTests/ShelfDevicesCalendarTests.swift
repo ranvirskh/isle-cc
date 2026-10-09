@@ -310,3 +310,34 @@ final class AgendaTests: XCTestCase {
         XCTAssertEqual(Agenda.empty.nextRefresh(after: now, calendar: calendar), date(9, 0), "day rollover")
     }
 }
+
+final class AgendaDayNavigationTests: XCTestCase {
+    private var cal: Calendar = { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!; return c }()
+    private let now = Date(timeIntervalSince1970: 1_791_500_000) // 2026-10-08 22:13 UTC
+
+    private func event(_ id: String, dayOffset: Int, hour: Int) -> AgendaEvent {
+        let start = cal.date(byAdding: .hour, value: hour, to: cal.date(byAdding: .day, value: dayOffset, to: cal.startOfDay(for: now))!)!
+        return AgendaEvent(id: id, title: id, start: start, end: start.addingTimeInterval(3600), calendarID: "c")
+    }
+
+    func testChosenFutureDayShowsOnlyThatDayAsUpcoming() {
+        let events = [event("today", dayOffset: 0, hour: 9), event("d3", dayOffset: 3, hour: 10), event("d4", dayOffset: 4, hour: 10)]
+        let day = cal.date(byAdding: .day, value: 3, to: now)!
+        let a = Agenda.build(day: day, events: events, now: now, calendar: cal)
+        XCTAssertEqual(a.rows.map(\.event.id), ["d3"])
+        XCTAssertEqual(a.rows.first?.status, .upcoming)
+        if case .other = a.day {} else { XCTFail("expected .other") }
+    }
+
+    func testPastDayIsAllPastAndTodayIsLabelledToday() {
+        let events = [event("y", dayOffset: -1, hour: 9)]
+        let a = Agenda.build(day: cal.date(byAdding: .day, value: -1, to: now)!, events: events, now: now, calendar: cal)
+        XCTAssertEqual(a.rows.first?.status, .past)
+        XCTAssertEqual(Agenda.build(day: now, events: [], now: now, calendar: cal).day, .today)
+    }
+
+    func testHiddenCalendarsAreFilteredOnAChosenDay() {
+        let a = Agenda.build(day: now, events: [event("a", dayOffset: 0, hour: 20)], now: now, calendar: cal, hiddenCalendarIDs: ["c"])
+        XCTAssertTrue(a.rows.isEmpty)
+    }
+}

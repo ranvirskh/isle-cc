@@ -8,6 +8,8 @@ final class CalendarController: ObservableObject {
 
     @Published private(set) var agenda: Agenda = .empty
     @Published private(set) var access: Access = .unknown
+    /// nil = the automatic view (today, or tomorrow when today is empty); otherwise the day the user navigated to.
+    @Published private(set) var selectedDay: Date?
     @Published private(set) var calendars: [(id: String, title: String, color: NSColor)] = []
 
     private let store = EKEventStore()
@@ -75,8 +77,8 @@ final class CalendarController: ObservableObject {
         calendars = store.calendars(for: .event).map { ($0.calendarIdentifier, $0.title, $0.color ?? .systemBlue) }
         let cal = Calendar.current
         let now = Date()
-        let start = cal.startOfDay(for: now)
-        guard let end = cal.date(byAdding: .day, value: 2, to: start) else { return }
+        let start = cal.startOfDay(for: selectedDay ?? now)
+        guard let end = cal.date(byAdding: .day, value: selectedDay == nil ? 2 : 1, to: start) else { return }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         let events: [AgendaEvent] = store.events(matching: predicate).map { e in
             let c = (e.calendar.color ?? .systemBlue).usingColorSpace(.sRGB) ?? .systemBlue
@@ -85,7 +87,8 @@ final class CalendarController: ObservableObject {
                                calendarID: e.calendar.calendarIdentifier,
                                color: .init(r: c.redComponent, g: c.greenComponent, b: c.blueComponent))
         }
-        let built = Agenda.build(events: events, now: now, hiddenCalendarIDs: settings.hiddenCalendarIDs)
+        let built = selectedDay.map { Agenda.build(day: $0, events: events, now: now, hiddenCalendarIDs: settings.hiddenCalendarIDs) }
+            ?? Agenda.build(events: events, now: now, hiddenCalendarIDs: settings.hiddenCalendarIDs)
         if built != agenda { agenda = built }
         // One wake-up at the next status change; nothing runs in between.
         if let next = built.nextRefresh(after: now) {
@@ -94,6 +97,21 @@ final class CalendarController: ObservableObject {
             }
             timer?.tolerance = 1
         }
+    }
+
+    /// Moves the agenda by whole days. Going back to today returns to the automatic view.
+    func shiftDay(_ days: Int) {
+        let cal = Calendar.current
+        let base = selectedDay ?? (agenda.day == .tomorrow ? cal.date(byAdding: .day, value: 1, to: Date()) ?? Date() : Date())
+        guard let moved = cal.date(byAdding: .day, value: days, to: cal.startOfDay(for: base)) else { return }
+        selectedDay = cal.isDateInToday(moved) ? nil : moved
+        refresh()
+    }
+
+    func resetDay() {
+        guard selectedDay != nil else { return }
+        selectedDay = nil
+        refresh()
     }
 
     func openCalendarApp() {

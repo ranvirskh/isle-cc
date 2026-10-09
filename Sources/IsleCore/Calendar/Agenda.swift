@@ -30,7 +30,7 @@ public struct AgendaEvent: Equatable, Identifiable {
 }
 
 public struct Agenda: Equatable {
-    public enum Day: Equatable { case today, tomorrow }
+    public enum Day: Equatable { case today, tomorrow, other(Date) }
     public enum Status: Equatable { case past, current, upcoming }
 
     public struct Row: Equatable, Identifiable {
@@ -54,37 +54,54 @@ public struct Agenda: Equatable {
               let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else { return .empty }
 
         func rows(from dayStart: Date, to dayEnd: Date) -> [Row] {
-            visible
-                .filter { event in
-                    // Overlap test. An event ending exactly at midnight belongs to the day before.
-                    let end = max(event.end, event.start)
-                    if event.start >= dayEnd { return false }
-                    if end == event.start { return event.start >= dayStart }
-                    return end > dayStart
-                }
-                .sorted { a, b in
-                    if a.isAllDay != b.isAllDay { return a.isAllDay }
-                    if a.start != b.start { return a.start < b.start }
-                    return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
-                }
-                .map { event in
-                    let status: Status
-                    if event.isAllDay {
-                        status = (dayStart <= now && now < dayEnd) ? .current : .upcoming
-                    } else if event.end <= now {
-                        status = .past
-                    } else if event.start <= now {
-                        status = .current
-                    } else {
-                        status = .upcoming
-                    }
-                    return Row(event: event, status: status)
-                }
+            Agenda.rows(visible: visible, now: now, from: dayStart, to: dayEnd)
         }
 
         let today = rows(from: startOfToday, to: startOfTomorrow)
         if !today.isEmpty { return Agenda(day: .today, rows: today) }
         return Agenda(day: .tomorrow, rows: rows(from: startOfTomorrow, to: startOfDayAfter))
+    }
+
+    static func rows(visible: [AgendaEvent], now: Date, from dayStart: Date, to dayEnd: Date) -> [Row] {
+        visible
+            .filter { event in
+                // Overlap test. An event ending exactly at midnight belongs to the day before.
+                let end = max(event.end, event.start)
+                if event.start >= dayEnd { return false }
+                if end == event.start { return event.start >= dayStart }
+                return end > dayStart
+            }
+            .sorted { a, b in
+                if a.isAllDay != b.isAllDay { return a.isAllDay }
+                if a.start != b.start { return a.start < b.start }
+                return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+            }
+            .map { event in
+                let status: Status
+                if event.isAllDay {
+                    status = (dayStart <= now && now < dayEnd) ? .current : .upcoming
+                } else if event.end <= now {
+                    status = .past
+                } else if event.start <= now {
+                    status = .current
+                } else {
+                    status = .upcoming
+                }
+                return Row(event: event, status: status)
+            }
+    }
+
+    /// The agenda for one chosen day. Past days show everything as past, future days as upcoming.
+    public static func build(day: Date, events: [AgendaEvent], now: Date, calendar: Calendar = .current,
+                             hiddenCalendarIDs: Set<String> = []) -> Agenda {
+        let visible = events.filter { !hiddenCalendarIDs.contains($0.calendarID) }
+        let start = calendar.startOfDay(for: day)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return .empty }
+        let kind: Day
+        if calendar.isDate(day, inSameDayAs: now) { kind = .today }
+        else if let t = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(day, inSameDayAs: t) { kind = .tomorrow }
+        else { kind = .other(start) }
+        return Agenda(day: kind, rows: rows(visible: visible, now: now, from: start, to: end))
     }
 
     /// The next moment the statuses change (an event starts or ends, or the day rolls over).
