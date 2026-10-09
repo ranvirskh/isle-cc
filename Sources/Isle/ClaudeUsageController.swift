@@ -11,10 +11,11 @@ final class ClaudeUsageController: ObservableObject {
     /// A terminal or the Claude app is the frontmost app: the 5-hour limit is shown whatever its level.
     @Published private(set) var codingAppActive = false
 
-    /// What the collapsed notch shows for usage. Nothing unless a terminal or the Claude app is in front, so an idle
-    /// notch stays plain black at the size of the real notch.
+    /// What the collapsed notch shows for usage: only while a terminal or the Claude app is in front AND the 5-hour limit is
+    /// above 50%. Otherwise the notch stays plain black at the size of the real notch.
     var pillPercent: Double? {
-        guard codingAppActive, let five = windows.first(where: { $0.id == "five_hour" }), LimitFormat.isCurrent(five, now: Date()) else { return nil }
+        guard codingAppActive, let five = windows.first(where: { $0.id == "five_hour" }), LimitFormat.isCurrent(five, now: Date()),
+              five.usedPercent > ClaudeUsage.fiveHourShowAbove else { return nil }
         return five.usedPercent
     }
 
