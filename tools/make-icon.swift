@@ -1,4 +1,4 @@
-// Draws Isle's oasis app icon (original artwork) and writes AppIcon.icns.
+// Draws Isle's palm tree app icon (original artwork) and writes AppIcon.icns.
 // usage: swiftc -O tools/make-icon.swift -o /tmp/make-icon && /tmp/make-icon Resources
 import AppKit
 
@@ -19,52 +19,55 @@ func draw(size s: CGFloat) -> NSImage {
         NSGradient(colors: [NSColor(red: 1.0, green: 0.62, blue: 0.30, alpha: 1), NSColor(red: 0.98, green: 0.45, blue: 0.40, alpha: 1),
                             NSColor(red: 0.36, green: 0.28, blue: 0.55, alpha: 1)],
                    atLocations: [0, 0.45, 1], colorSpace: .sRGB)!.draw(in: body, angle: 90)
-        // Sun.
+        // Sun, low behind the tree.
         NSColor(red: 1, green: 0.93, blue: 0.62, alpha: 0.95).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 560 * u, y: 520 * u, width: 190 * u, height: 190 * u)).fill()
-        // Far dune.
-        let dune1 = NSBezierPath()
-        dune1.move(to: NSPoint(x: 100 * u, y: 420 * u))
-        dune1.curve(to: NSPoint(x: 560 * u, y: 430 * u), controlPoint1: NSPoint(x: 260 * u, y: 520 * u), controlPoint2: NSPoint(x: 420 * u, y: 380 * u))
-        dune1.curve(to: NSPoint(x: 924 * u, y: 400 * u), controlPoint1: NSPoint(x: 700 * u, y: 480 * u), controlPoint2: NSPoint(x: 820 * u, y: 440 * u))
-        dune1.line(to: NSPoint(x: 924 * u, y: 100 * u)); dune1.line(to: NSPoint(x: 100 * u, y: 100 * u)); dune1.close()
-        NSColor(red: 0.86, green: 0.47, blue: 0.36, alpha: 1).setFill(); dune1.fill()
-        // Water pool.
-        let pool = NSBezierPath(ovalIn: NSRect(x: 190 * u, y: 200 * u, width: 640 * u, height: 190 * u))
-        NSGradient(colors: [NSColor(red: 0.30, green: 0.85, blue: 0.85, alpha: 1), NSColor(red: 0.06, green: 0.50, blue: 0.62, alpha: 1)])!.draw(in: pool, angle: 90)
-        // Sun reflection.
-        NSColor(red: 1, green: 0.95, blue: 0.75, alpha: 0.55).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 560 * u, y: 270 * u, width: 90 * u, height: 22 * u)).fill()
-        // Near sand.
-        let dune2 = NSBezierPath()
-        dune2.move(to: NSPoint(x: 100 * u, y: 100 * u))
-        dune2.line(to: NSPoint(x: 100 * u, y: 250 * u))
-        dune2.curve(to: NSPoint(x: 520 * u, y: 150 * u), controlPoint1: NSPoint(x: 260 * u, y: 330 * u), controlPoint2: NSPoint(x: 400 * u, y: 190 * u))
-        dune2.curve(to: NSPoint(x: 924 * u, y: 240 * u), controlPoint1: NSPoint(x: 680 * u, y: 110 * u), controlPoint2: NSPoint(x: 820 * u, y: 150 * u))
-        dune2.line(to: NSPoint(x: 924 * u, y: 100 * u)); dune2.close()
-        NSColor(red: 0.95, green: 0.74, blue: 0.48, alpha: 1).setFill(); dune2.fill()
+        NSBezierPath(ovalIn: NSRect(x: 430 * u, y: 330 * u, width: 360 * u, height: 360 * u)).fill()
+        // Sea band.
+        let sea = NSBezierPath(rect: NSRect(x: 100 * u, y: 100 * u, width: 824 * u, height: 250 * u))
+        NSGradient(colors: [NSColor(red: 0.30, green: 0.80, blue: 0.82, alpha: 1), NSColor(red: 0.07, green: 0.42, blue: 0.58, alpha: 1)])!.draw(in: sea, angle: -90)
+        // Island of sand.
+        let sand = NSBezierPath()
+        sand.move(to: NSPoint(x: 230 * u, y: 250 * u))
+        sand.curve(to: NSPoint(x: 512 * u, y: 330 * u), controlPoint1: NSPoint(x: 300 * u, y: 330 * u), controlPoint2: NSPoint(x: 420 * u, y: 345 * u))
+        sand.curve(to: NSPoint(x: 800 * u, y: 250 * u), controlPoint1: NSPoint(x: 610 * u, y: 345 * u), controlPoint2: NSPoint(x: 730 * u, y: 330 * u))
+        sand.curve(to: NSPoint(x: 230 * u, y: 250 * u), controlPoint1: NSPoint(x: 640 * u, y: 190 * u), controlPoint2: NSPoint(x: 390 * u, y: 190 * u))
+        NSColor(red: 0.96, green: 0.77, blue: 0.50, alpha: 1).setFill(); sand.fill()
 
-        // Palm trees.
-        func palm(base: NSPoint, height: CGFloat, lean: CGFloat, scale: CGFloat) {
-            let trunk = NSBezierPath()
-            let top = NSPoint(x: base.x + lean, y: base.y + height)
-            trunk.move(to: base)
-            trunk.curve(to: top, controlPoint1: NSPoint(x: base.x + lean * 0.1, y: base.y + height * 0.5), controlPoint2: NSPoint(x: top.x - lean * 0.4, y: top.y - height * 0.2))
-            trunk.lineWidth = 22 * scale * u; trunk.lineCapStyle = .round
-            NSColor(red: 0.33, green: 0.20, blue: 0.20, alpha: 1).setStroke(); trunk.stroke()
-            for a in stride(from: -20.0, through: 200.0, by: 36.0) {
-                let rad = a * .pi / 180
-                let len = 150 * scale * u
-                let end = NSPoint(x: top.x + cos(rad) * len, y: top.y + sin(rad) * len * 0.55 - 40 * scale * u)
-                let mid = NSPoint(x: top.x + cos(rad) * len * 0.5, y: top.y + sin(rad) * len * 0.5 + 38 * scale * u)
-                let frond = NSBezierPath()
-                frond.move(to: top); frond.curve(to: end, controlPoint1: mid, controlPoint2: mid)
-                frond.lineWidth = 16 * scale * u; frond.lineCapStyle = .round
-                NSColor(red: 0.12, green: 0.40, blue: 0.30, alpha: 1).setStroke(); frond.stroke()
-            }
+        // One big palm tree.
+        let base = NSPoint(x: 500 * u, y: 290 * u)
+        let top = NSPoint(x: 560 * u, y: 700 * u)
+        let trunk = NSBezierPath()
+        trunk.move(to: base)
+        trunk.curve(to: top, controlPoint1: NSPoint(x: 440 * u, y: 450 * u), controlPoint2: NSPoint(x: 500 * u, y: 600 * u))
+        trunk.lineWidth = 46 * u; trunk.lineCapStyle = .round
+        NSColor(red: 0.36, green: 0.21, blue: 0.18, alpha: 1).setStroke(); trunk.stroke()
+        // Trunk rings.
+        NSColor(red: 0.24, green: 0.14, blue: 0.13, alpha: 0.55).setStroke()
+        for t in stride(from: 0.12, through: 0.92, by: 0.1) {
+            let y = base.y + (top.y - base.y) * CGFloat(t)
+            let x = base.x + (top.x - base.x) * CGFloat(t * t) - 8 * u
+            let ring = NSBezierPath(); ring.move(to: NSPoint(x: x - 20 * u, y: y)); ring.line(to: NSPoint(x: x + 20 * u, y: y - 6 * u))
+            ring.lineWidth = 5 * u; ring.stroke()
         }
-        palm(base: NSPoint(x: 300 * u, y: 300 * u), height: 330 * u, lean: -50 * u, scale: 1.0)
-        palm(base: NSPoint(x: 420 * u, y: 285 * u), height: 240 * u, lean: 55 * u, scale: 0.75)
+        // Fronds: curved leaves with a lighter midrib.
+        let angles: [CGFloat] = [-10, 28, 62, 100, 138, 172, 205]
+        for (i, deg) in angles.enumerated() {
+            let rad = deg * .pi / 180
+            let len = (i % 2 == 0 ? 300 : 260) * u
+            let end = NSPoint(x: top.x + cos(rad) * len, y: top.y + sin(rad) * len * 0.45 - 110 * u)
+            let ctrl = NSPoint(x: top.x + cos(rad) * len * 0.55, y: top.y + sin(rad) * len * 0.55 + 90 * u)
+            let leaf = NSBezierPath()
+            leaf.move(to: top); leaf.curve(to: end, controlPoint1: ctrl, controlPoint2: ctrl)
+            leaf.lineWidth = 46 * u; leaf.lineCapStyle = .round
+            NSColor(red: i % 2 == 0 ? 0.10 : 0.16, green: i % 2 == 0 ? 0.45 : 0.55, blue: 0.30, alpha: 1).setStroke(); leaf.stroke()
+            let rib = NSBezierPath()
+            rib.move(to: top); rib.curve(to: end, controlPoint1: ctrl, controlPoint2: ctrl)
+            rib.lineWidth = 6 * u; rib.lineCapStyle = .round
+            NSColor(red: 0.55, green: 0.85, blue: 0.55, alpha: 0.6).setStroke(); rib.stroke()
+        }
+        // Coconuts.
+        NSColor(red: 0.30, green: 0.18, blue: 0.14, alpha: 1).setFill()
+        for dx in [-26.0, 4.0, 30.0] { NSBezierPath(ovalIn: NSRect(x: (top.x / u + dx - 18) * u, y: (top.y / u - 58) * u, width: 36 * u, height: 36 * u)).fill() }
         return true
     }
 }
