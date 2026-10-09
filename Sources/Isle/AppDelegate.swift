@@ -194,21 +194,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// A palm tree silhouette drawn as a template image, so it follows the menu bar's light and dark appearance.
     private static func palmTreeImage() -> NSImage {
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
-            NSColor.black.setStroke()
             NSColor.black.setFill()
-            let top = NSPoint(x: 10.5, y: 12)
+            let top = NSPoint(x: 10.2, y: 11.2)
+            // Tapered, curved trunk.
             let trunk = NSBezierPath()
-            trunk.move(to: NSPoint(x: 8, y: 2))
-            trunk.curve(to: top, controlPoint1: NSPoint(x: 7.5, y: 6), controlPoint2: NSPoint(x: 9.5, y: 9.5))
-            trunk.lineWidth = 1.8; trunk.lineCapStyle = .round; trunk.stroke()
-            for (dx, dy) in [(-6.5, -2.5), (-4.0, 1.5), (0.0, 3.5), (4.5, 1.8), (6.5, -2.0)] as [(CGFloat, CGFloat)] {
-                let end = NSPoint(x: top.x + dx, y: top.y + dy)
-                let frond = NSBezierPath()
-                frond.move(to: top)
-                frond.curve(to: end, controlPoint1: NSPoint(x: top.x + dx * 0.4, y: top.y + dy + 3), controlPoint2: NSPoint(x: top.x + dx * 0.8, y: top.y + dy + 2))
-                frond.lineWidth = 1.7; frond.lineCapStyle = .round; frond.stroke()
+            trunk.move(to: NSPoint(x: 6.6, y: 1.0))
+            trunk.curve(to: NSPoint(x: top.x - 0.7, y: top.y), controlPoint1: NSPoint(x: 6.9, y: 5.5), controlPoint2: NSPoint(x: 9.2, y: 8.2))
+            trunk.line(to: NSPoint(x: top.x + 0.7, y: top.y))
+            trunk.curve(to: NSPoint(x: 9.0, y: 1.0), controlPoint1: NSPoint(x: 10.3, y: 8.0), controlPoint2: NSPoint(x: 8.6, y: 5.3))
+            trunk.close()
+            trunk.fill()
+            // Pointed fronds that arch out and droop.
+            func frond(_ tipX: CGFloat, _ tipY: CGFloat, lift: CGFloat, width: CGFloat) {
+                let tip = NSPoint(x: top.x + tipX, y: top.y + tipY)
+                let mid = NSPoint(x: top.x + tipX * 0.5, y: top.y + tipY * 0.5 + lift)
+                let leaf = NSBezierPath()
+                leaf.move(to: top)
+                leaf.curve(to: tip, controlPoint1: NSPoint(x: mid.x, y: mid.y + width), controlPoint2: NSPoint(x: mid.x + tipX * 0.25, y: mid.y + width * 0.6))
+                leaf.curve(to: top, controlPoint1: NSPoint(x: mid.x + tipX * 0.25, y: mid.y - width * 0.6), controlPoint2: NSPoint(x: mid.x, y: mid.y - width))
+                leaf.close()
+                leaf.fill()
             }
-            NSBezierPath(ovalIn: NSRect(x: 9.2, y: 10.0, width: 2.4, height: 2.4)).fill()
+            frond(-8.6, -3.2, lift: 3.6, width: 1.5)
+            frond(-6.4, 2.2, lift: 3.4, width: 1.4)
+            frond(-2.2, 5.2, lift: 1.8, width: 1.3)
+            frond(2.8, 5.0, lift: 1.8, width: 1.3)
+            frond(6.6, 1.8, lift: 3.4, width: 1.4)
+            frond(7.6, -3.4, lift: 3.4, width: 1.5)
+            NSBezierPath(ovalIn: NSRect(x: 8.6, y: 9.4, width: 2.0, height: 2.0)).fill()
+            NSBezierPath(ovalIn: NSRect(x: 10.3, y: 9.6, width: 1.9, height: 1.9)).fill()
             return true
         }
         image.isTemplate = true

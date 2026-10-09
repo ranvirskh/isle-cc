@@ -109,22 +109,39 @@ final class DevicesController: ObservableObject {
         let address = device.addressString ?? ""
         let kind = DeviceSymbols.kind(majorClass: major, minorClass: Int(device.deviceClassMinor))
         let knownName = device.name.flatMap { $0.isEmpty ? nil : $0 }
-        // The name and battery levels show up in the profiler a moment after the connection is made.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.fetchDetails(address: address, name: knownName) { name, battery in
-                let lowered = name.lowercased()
-                if ["iphone", "ipad", "macbook", "imac"].contains(where: lowered.contains) { return }
-                let symbol = DeviceSymbols.firstAvailable(name: name, kind: kind)
-                let item = PopupItem(id: "bt-\(BluetoothProfilerParser.normalize(address: address.isEmpty ? name : address))", kind: .bluetoothDevice,
-                                     symbol: symbol, title: name, subtitle: battery == nil ? "Connected" : "",
-                                     batteries: battery?.readings ?? [])
-                self?.onPopup?(item)
+        // The name, model and battery levels show up in the profiler a moment after the connection is made, so look
+        // again a couple of times if the device is not listed yet.
+        resolve(address: address, knownName: knownName, attempt: 0, delays: [1.5, 3.0, 5.0]) { [weak self] info, battery in
+            let name = knownName ?? info?.name ?? IOBluetoothDevice(addressString: address)?.nameOrAddress ?? "Bluetooth device"
+            let lowered = name.lowercased()
+            if ["iphone", "ipad", "macbook", "imac"].contains(where: lowered.contains) { return }
+            // What the device is called by its maker, so AirPods named "Slatt" still get the AirPods icon.
+            let model = DeviceSymbols.appleAudioName(vendorID: info?.vendorID, productID: info?.productID, hasCase: info?.hasCase ?? false)
+            let symbolName = model ?? name
+            let symbol = DeviceSymbols.firstAvailable(name: symbolName, kind: kind)
+            Log.write("bluetooth: connected \(name) model \(model ?? "-") vendor \(info?.vendorID.map { String($0, radix: 16) } ?? "-")")
+            let item = PopupItem(id: "bt-\(BluetoothProfilerParser.normalize(address: address.isEmpty ? name : address))", kind: .bluetoothDevice,
+                                 symbol: symbol, title: name, subtitle: battery == nil ? (model ?? "Connected") : "",
+                                 batteries: battery?.readings ?? [])
+            self?.onPopup?(item)
+        }
+    }
+
+    private func resolve(address: String, knownName: String?, attempt: Int, delays: [Double],
+                         _ done: @escaping @MainActor (BluetoothProfilerParser.DeviceInfo?, DeviceBattery?) -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delays[attempt]) { [weak self] in
+            self?.profile(address: address) { info, battery in
+                // Done once the device is listed as connected with a battery (or we ran out of tries).
+                if (info?.connected == true && battery != nil) || attempt + 1 >= delays.count {
+                    done(info, battery)
+                } else {
+                    self?.resolve(address: address, knownName: knownName, attempt: attempt + 1, delays: delays, done)
+                }
             }
         }
     }
 
-    /// Resolves the display name (the connect notification often has none yet) and the battery from the profiler.
-    private func fetchDetails(address: String, name: String?, _ done: @escaping @MainActor (String, DeviceBattery?) -> Void) {
+    private func profile(address: String, _ done: @escaping @MainActor (BluetoothProfilerParser.DeviceInfo?, DeviceBattery?) -> Void) {
         DispatchQueue.global(qos: .utility).async {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
@@ -132,21 +149,19 @@ final class DevicesController: ObservableObject {
             let out = Pipe()
             p.standardOutput = out
             p.standardError = FileHandle.nullDevice
+            var info: BluetoothProfilerParser.DeviceInfo?
             var battery: DeviceBattery?
-            var resolved = name
             do {
                 try p.run()
                 let data = out.fileHandleForReading.readDataToEndOfFile()
                 p.waitUntilExit()
                 let key = BluetoothProfilerParser.normalize(address: address)
-                if resolved == nil { resolved = BluetoothProfilerParser.names(data)[key] }
-                let parsed = BluetoothProfilerParser.parse(data)
-                battery = parsed.byAddress[key] ?? resolved.flatMap { parsed.byName[$0] }
+                info = BluetoothProfilerParser.devices(data)[key]
+                battery = BluetoothProfilerParser.parse(data).byAddress[key]
             } catch {
                 Log.write("system_profiler failed: \(error.localizedDescription)")
             }
-            let final = resolved ?? IOBluetoothDevice(addressString: address)?.nameOrAddress ?? "Bluetooth device"
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(final, battery) } }
+            DispatchQueue.main.async { MainActor.assumeIsolated { done(info, battery) } }
         }
     }
 }

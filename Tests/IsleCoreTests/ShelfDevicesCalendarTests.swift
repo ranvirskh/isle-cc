@@ -365,3 +365,26 @@ final class BluetoothConnectedParserTests: XCTestCase {
         XCTAssertTrue(BluetoothProfilerParser.parseConnected(Data("{}".utf8)).isEmpty)
     }
 }
+
+final class BluetoothDeviceInfoTests: XCTestCase {
+    func testReadsNameVendorAndProductByAddress() throws {
+        let json = #"{"SPBluetoothDataType":[{"device_connected":[{"Slatt":{"device_address":"6C:12:70:0B:73:07","device_vendorID":"0x004C","device_productID":"0x2024","device_batteryLevelCase":"52%","device_batteryLevelLeft":"75%"}}],"device_not_connected":[{"g82":{"device_address":"20:DF:B9:D2:5A:8A"}}]}]}"#
+        let all = BluetoothProfilerParser.devices(Data(json.utf8))
+        let airpods = try XCTUnwrap(all["6C:12:70:0B:73:07"])
+        XCTAssertEqual(airpods.name, "Slatt")
+        XCTAssertTrue(airpods.connected)
+        XCTAssertTrue(airpods.hasCase)
+        XCTAssertEqual(airpods.vendorID, 0x4C)
+        XCTAssertEqual(airpods.productID, 0x2024)
+        XCTAssertFalse(try XCTUnwrap(all["20:DF:B9:D2:5A:8A"]).connected)
+        XCTAssertEqual(BluetoothProfilerParser.normalize(address: "6c-12-70-0b-73-07"), "6C:12:70:0B:73:07")
+    }
+
+    func testAppleHeadphonesAreRecognisedAsAirPods() {
+        XCTAssertEqual(DeviceSymbols.appleAudioName(vendorID: 0x4C, productID: 0x2024, hasCase: true), "AirPods Pro")
+        XCTAssertEqual(DeviceSymbols.appleAudioName(vendorID: 0x4C, productID: 0x200A, hasCase: false), "AirPods Max")
+        XCTAssertEqual(DeviceSymbols.appleAudioName(vendorID: 0x4C, productID: 0x9999, hasCase: true), "AirPods")
+        XCTAssertNil(DeviceSymbols.appleAudioName(vendorID: 0x4C, productID: 0x9999, hasCase: false))
+        XCTAssertNil(DeviceSymbols.appleAudioName(vendorID: 0x054C, productID: 0x2024, hasCase: true))
+    }
+}

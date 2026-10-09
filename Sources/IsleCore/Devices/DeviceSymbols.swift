@@ -7,6 +7,18 @@ public enum DeviceKind: String, Equatable {
 public enum DeviceSymbols {
     private static let generation = Rx(#"(?:\b|\()(\d)(?:st|nd|rd|th)?\s*gen|airpods\s*(\d)\b|gen(?:eration)?\s*(\d)"#)
 
+    /// Apple (vendor 0x004C) audio products by Bluetooth product id; unknown Apple headphones with a charging case are AirPods.
+    public static func appleAudioName(vendorID: Int?, productID: Int?, hasCase: Bool) -> String? {
+        guard vendorID == 0x004C else { return nil }
+        switch productID {
+        case 0x200A?: return "AirPods Max"
+        case 0x200E?, 0x2014?, 0x2024?, 0x2027?: return "AirPods Pro"
+        case 0x2013?, 0x2019?: return "AirPods 3"
+        case 0x2002?, 0x200F?: return "AirPods"
+        default: return hasCase ? "AirPods" : nil
+        }
+    }
+
     /// SF Symbol candidates for a Bluetooth device, best first. The UI uses the first one this macOS has.
     public static func candidates(name: String, kind: DeviceKind = .unknown) -> [String] {
         let n = name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil).lowercased()
@@ -144,24 +156,43 @@ public enum BluetoothProfilerParser {
         return out.sorted { $0.0.localizedCaseInsensitiveCompare($1.0) == .orderedAscending }
     }
 
-    /// Device names by normalized address, for devices whose name was not known yet when they connected.
-    public static func names(_ data: Data) -> [String: String] {
+    public struct DeviceInfo: Equatable {
+        public var name: String
+        public var vendorID: Int?
+        public var productID: Int?
+        public var hasCase: Bool
+        public var connected: Bool
+    }
+
+    private static func hex(_ v: Any?) -> Int? {
+        guard let s = Loose.string(v) else { return nil }
+        return Int(s.replacingOccurrences(of: "0x", with: "", options: .caseInsensitive), radix: 16)
+    }
+
+    /// Name, vendor and product of every device the profiler lists, by normalized address. The connect notification
+    /// often has no name yet, and the vendor / product ids are what tell AirPods apart from other headphones.
+    public static func devices(_ data: Data) -> [String: DeviceInfo] {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let sections = root["SPBluetoothDataType"] as? [[String: Any]] else { return [:] }
-        var out: [String: String] = [:]
+        var out: [String: DeviceInfo] = [:]
         for section in sections {
             for (key, value) in section where key.hasPrefix("device_") {
                 guard let devices = value as? [[String: Any]] else { continue }
                 for entry in devices {
                     for (name, raw) in entry {
                         guard let props = raw as? [String: Any], let address = Loose.string(props["device_address"]) else { continue }
-                        out[normalize(address: address)] = name
+                        out[normalize(address: address)] = DeviceInfo(
+                            name: name, vendorID: hex(props["device_vendorID"]), productID: hex(props["device_productID"]),
+                            hasCase: props["device_batteryLevelCase"] != nil, connected: key == "device_connected")
                     }
                 }
             }
         }
         return out
     }
+
+    /// Device names by normalized address.
+    public static func names(_ data: Data) -> [String: String] { devices(data).mapValues(\.name) }
 
     /// Parses `system_profiler SPBluetoothDataType -json` into battery levels keyed by address and by name.
     public static func parse(_ data: Data) -> (byAddress: [String: DeviceBattery], byName: [String: DeviceBattery]) {
