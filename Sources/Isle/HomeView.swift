@@ -164,7 +164,9 @@ struct MarqueeText: View {
         let mine = generation
         guard active else {
             // Paused: glide back to the start (replaces the running scroll animation).
-            withAnimation(Motion.ease(0.3, .lyrics)) { offset = 0 }
+            let travelled = Double(abs(offset))
+            let seconds = min(Motion.lyricReturnMax, max(Motion.lyricReturnMin, travelled / Motion.lyricReturnPointsPerSecond))
+            withAnimation(Motion.ease(seconds, .lyrics)) { offset = 0 }
             return
         }
         guard textWidth > containerWidth, containerWidth > 0, !Motion.reduceMotion, Motion.isOn(.lyrics) else { return }

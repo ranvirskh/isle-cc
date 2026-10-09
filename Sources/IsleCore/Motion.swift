@@ -100,6 +100,10 @@ public enum Motion {
     /// Points per second for a lyric line too long to fit.
     public static let lyricMarqueeSpeed: Double = 34
     public static let lyricMarqueePause: Double = 0.9
+    /// Gliding a scrolled lyric back to its start on pause: slow ease in and out, longer for longer lines.
+    public static let lyricReturnMin: Double = 0.7
+    public static let lyricReturnMax: Double = 1.4
+    public static let lyricReturnPointsPerSecond: Double = 120
     public static let buttonPressScale: Double = 0.86
     public static let buttonPress = Spring(response: 0.22, damping: 0.6)
     public static let progressTick: Double = 0.25
