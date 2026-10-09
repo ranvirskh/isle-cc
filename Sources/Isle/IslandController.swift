@@ -130,7 +130,7 @@ final class IslandController {
         let alert = env.usage.pillAlert
         let usage = alert == nil ? env.usage.pillPercent : nil
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
-        guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
+        guard media != model.mediaLive || privacy != model.privacyLive || (live && settings.liveWings) != model.liveActive
                 || env.privacy.state != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
@@ -141,7 +141,7 @@ final class IslandController {
             model.privacy = env.privacy.state
             model.usagePercent = usage
             model.usageAlert = alert
-            model.liveActive = live
+            model.liveActive = live && settings.liveWings
         }
     }
 
@@ -420,6 +420,7 @@ final class IslandController {
         switch item.kind {
         case .nowPlaying: machine.popupDuration = Motion.scaled(Motion.bannerDuration)
         case .bluetoothDevice: machine.popupDuration = Motion.scaled(Motion.devicePopupDuration)
+        case .usage: machine.popupDuration = Motion.scaled(2.5)
         default: machine.popupDuration = Motion.popupDuration
         }
         handle(.popupRequested)

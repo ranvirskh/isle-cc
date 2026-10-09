@@ -167,6 +167,10 @@ final class Settings: ObservableObject {
         get { d.bool(forKey: SettingsKey.privacyIndicator) }
         set { set(newValue, SettingsKey.privacyIndicator) }
     }
+    var liveWings: Bool {
+        get { d.bool(forKey: SettingsKey.liveWings) }
+        set { set(newValue, SettingsKey.liveWings) }
+    }
     var liveActivity: Bool {
         get { d.bool(forKey: SettingsKey.liveActivity) }
         set { set(newValue, SettingsKey.liveActivity) }

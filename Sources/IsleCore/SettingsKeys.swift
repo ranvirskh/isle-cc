@@ -40,6 +40,7 @@ public enum SettingsKey {
     public static let theme = "theme"                             // IslandTheme, default classic
     public static let chargingIndicator = "chargingIndicator"     // ChargingIndicatorMode, default whileCharging
     public static let privacyIndicator = "privacyIndicator"       // mic / camera / screen recording dots, default true
+    public static let liveWings = "liveWings"                     // widen the notch for live items (cover, charging, ...), default false
     public static let liveActivity = "liveActivity"               // cover + equalizer beside the notch while playing, default true
     public static let songBanner = "songBanner"                   // default true
     public static let lyricsContact = "lyricsContact"             // optional contact appended to the User-Agent
@@ -80,6 +81,7 @@ public enum SettingsKey {
         theme: IslandTheme.classic.rawValue,
         chargingIndicator: ChargingIndicatorMode.brief.rawValue,
         privacyIndicator: true,
+        liveWings: false,
         liveActivity: true,
         songBanner: true,
         lyricsContact: "",

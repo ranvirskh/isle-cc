@@ -165,6 +165,7 @@ struct SettingsView: View {
                 }
                 Toggle("Show browser downloads in the notch (watches your Downloads folder for file names and sizes)", isOn: binding({ settings.downloadsIndicator }, { settings.downloadsIndicator = $0 }))
                 Toggle("Indicator when the microphone, camera or screen recording is on", isOn: binding({ settings.privacyIndicator }, { settings.privacyIndicator = $0 }))
+                Toggle("Widen the notch for live items (cover, charging, downloads). Off keeps it hidden inside the real notch", isOn: binding({ settings.liveWings }, { settings.liveWings = $0 }))
                 Toggle("Cover and equalizer beside the notch while playing", isOn: binding({ settings.liveActivity }, { settings.liveActivity = $0 }))
                 Toggle("Song-change banner (cover flips in, 1.5 s)", isOn: binding({ settings.songBanner }, { settings.songBanner = $0 }))
             }

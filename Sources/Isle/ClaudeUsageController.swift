@@ -21,6 +21,10 @@ final class ClaudeUsageController: ObservableObject {
     /// 90% or more: percentage and time left on the left of the notch, again only while a terminal or Claude is in front.
     var pillAlert: ClaudeUsage.Alert? { codingAppActive ? ClaudeUsage.alert(windows, now: Date()) : nil }
 
+    /// Called when a terminal or the Claude app comes to the front and there is a reading to show.
+    var onCodingAppOpened: ((String) -> Void)?
+    private var lastUsagePopup = Date.distantPast
+
     private let settings = Settings.shared
     private var timer: Timer?
     private var inFlight = false
@@ -44,7 +48,26 @@ final class ClaudeUsageController: ObservableObject {
 
     private func frontChanged(_ bundleID: String?) {
         let active = bundleID.map { ClaudeUsage.codingBundleIDs.contains($0) } ?? false
-        if active != codingAppActive { codingAppActive = active; if active { refreshIfStale() } }
+        guard active != codingAppActive else { return }
+        codingAppActive = active
+        guard active else { return }
+        refreshIfStale()
+        // A short readout under the notch, at most once every two minutes, instead of widening the notch.
+        if settings.claudeUsage, Date().timeIntervalSince(lastUsagePopup) > 120, let text = usageSentence() {
+            lastUsagePopup = Date()
+            onCodingAppOpened?(text)
+        }
+    }
+
+    private func usageSentence() -> String? {
+        let now = Date()
+        let current = windows.filter { LimitFormat.isCurrent($0, now: now) }
+        guard !current.isEmpty else { return nil }
+        var parts = ClaudeUsage.summary(ClaudeUsage.displayed(current, now: now, alwaysShowFiveHour: true), now: now)
+        if let five = current.first(where: { $0.id == "five_hour" }), let reset = five.resetsAt {
+            parts += " · resets in \(ClaudeUsage.timeLeftLabel(until: reset, now: now))"
+        }
+        return parts
     }
 
     private func sync() {
