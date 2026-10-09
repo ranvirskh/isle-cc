@@ -854,6 +854,6 @@ final class WeatherLocationTests: XCTestCase {
     }
 
     func testBriefChargingIndicatorLastsFiveSeconds() {
-        XCTAssertEqual(ChargingIndicatorMode.briefDuration, 5)
+        XCTAssertEqual(ChargingIndicatorMode.briefDuration, 2.5)
     }
 }

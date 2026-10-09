@@ -358,7 +358,7 @@ final class IslandController {
         default: spring = Motion.expand
         }
         let showContent = new != .collapsed
-        withAnimation(Motion.spring(spring)) { model.phase = new }
+        withAnimation(new == .collapsed ? Motion.close() : Motion.spring(spring)) { model.phase = new }
         if showContent {
             // Content follows the shape: a short delay, then fade/scale/unblur in.
             withAnimation(Motion.easeOut(Motion.contentInDuration, delay: old == .collapsed ? Motion.contentInDelay : 0)) { model.contentVisible = true }

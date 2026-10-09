@@ -113,7 +113,8 @@ struct IslandRootView: View {
         .clipShape(IslandShape(flare: flare, bottom: bottom))
         .opacity(visible ? 1 : 0)
         .blur(radius: visible ? 0 : Motion.contentInBlur)
-        .scaleEffect(visible ? 1 : Motion.contentInScale, anchor: .top)
+        // Only opening scales the content up; closing just fades, which avoids re-rasterising the big view every frame.
+        .scaleEffect(visible || model.phase == .collapsed ? 1 : Motion.contentInScale, anchor: .top)
         .animation(Motion.ease(Motion.tabSwitchDuration, .content), value: shownPhase)
         .allowsHitTesting(visible && model.phase != .collapsed)
     }

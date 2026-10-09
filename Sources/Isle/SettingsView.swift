@@ -160,7 +160,7 @@ struct SettingsView: View {
                 }
                 Picker("Charging indicator", selection: binding({ settings.chargingIndicator }, { settings.chargingIndicator = $0 })) {
                     Text("Off").tag(ChargingIndicatorMode.off)
-                    Text("For 5 seconds after plugging in").tag(ChargingIndicatorMode.brief)
+                    Text("For 2.5 seconds after plugging in").tag(ChargingIndicatorMode.brief)
                     Text("While charging").tag(ChargingIndicatorMode.whileCharging)
                 }
                 Toggle("Show browser downloads in the notch (watches your Downloads folder for file names and sizes)", isOn: binding({ settings.downloadsIndicator }, { settings.downloadsIndicator = $0 }))

@@ -80,7 +80,7 @@ public enum Motion {
     public static let contentInDelay: Double = 0.08
     public static let contentInDuration: Double = 0.24
     /// Content fades out before the shape finishes closing.
-    public static let contentOutDuration: Double = 0.16
+    public static let contentOutDuration: Double = 0.14
     /// Scale and blur the content starts from while the shape opens.
     public static let contentInScale: Double = 0.94
     public static let contentInBlur: Double = 0   // blur is costly on a large view; opacity + scale carry the effect
@@ -136,6 +136,15 @@ public enum Motion {
         if reduceMotion { return .easeOut(duration: reducedFade) }
         let damping = min(1, max(0.35, s.damping + preset.dampingOffset))
         return .spring(response: s.response * preset.responseScale / max(speed, 0.1), dampingFraction: damping)
+    }
+
+    /// Closing the island: a fast start and a long, soft landing that ends exactly on the target. A spring keeps
+    /// nudging the shape by sub-pixel amounts for its whole tail, which reads as a slight shimmer on a closing notch.
+    public static func close(_ c: Category = .shape) -> Animation {
+        guard isOn(c) else { return instant }
+        if reduceMotion { return .easeOut(duration: reducedFade) }
+        let k = max(speed, 0.1)
+        return .timingCurve(0.22, 0.0, 0.12, 1.0, duration: 0.42 * preset.responseScale / k)
     }
 
     public static func ease(_ duration: Double, delay: Double = 0, _ c: Category = .content) -> Animation {
