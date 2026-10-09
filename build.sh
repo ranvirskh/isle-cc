@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 
 APP_NAME="Isle"
 BUNDLE_ID="local.isle.app"
-VERSION="1.1.0"
+VERSION="1.1.1"
 IDENTITY="Isle Local Signing"
 KEYCHAIN="$HOME/Library/Keychains/isle-signing.keychain-db"
 KEYCHAIN_PASSWORD="isle-local-signing"
