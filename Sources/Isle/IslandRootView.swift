@@ -35,8 +35,8 @@ struct IslandRootView: View {
     @EnvironmentObject var model: IslandModel
     @EnvironmentObject var env: AppEnv
     @State private var shownPhase: IslandStateMachine.Phase = .expanded
-    /// The expanded views are only built while the island is open (and while it fades out), so a collapsed island runs nothing.
-    @State private var renderContent = false
+    /// The expanded views stay built (so opening never pays for creating them) but every timeline in them is paused while collapsed.
+    @State private var renderContent = true
     @State private var teardown: DispatchWorkItem?
 
     private var flare: CGFloat { model.phase == .collapsed ? 0 : (model.isNotched ? 14 : 12) }
@@ -55,7 +55,7 @@ struct IslandRootView: View {
             ZStack(alignment: .top) {
                 IslandShape(flare: flare, bottom: bottom)
                     .fill(Color.black)
-                    .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.5), radius: 14, x: 0, y: 6)
+                    .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.4), radius: 10, x: 0, y: 4)
                 content(size: size)
                 LiveActivityView()
                     .frame(width: size.width, height: size.height)
@@ -73,10 +73,6 @@ struct IslandRootView: View {
             if new != .collapsed {
                 shownPhase = new
                 renderContent = true
-            } else {
-                let w = DispatchWorkItem { renderContent = false }
-                teardown = w
-                DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(0.7), execute: w)
             }
         }
         .preferredColorScheme(.dark)

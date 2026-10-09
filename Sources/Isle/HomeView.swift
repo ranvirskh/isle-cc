@@ -107,12 +107,13 @@ struct PlayerColumn: View {
 /// The current lyric as one line, scrolling horizontally when it does not fit.
 struct LyricLineView: View {
     @EnvironmentObject var media: MediaController
+    @EnvironmentObject var model: IslandModel
     let font: Font
     let color: Color
 
     var body: some View {
         let playing = media.now?.isPlaying ?? false
-        TimelineView(.animation(minimumInterval: 0.2, paused: !playing && !hasLyrics)) { ctx in
+        TimelineView(.animation(minimumInterval: 0.2, paused: !playing || !hasLyrics || model.phase == .collapsed)) { ctx in
             let line = media.currentLyric(at: ctx.date).current
             ZStack(alignment: .leading) {
                 if let line {
