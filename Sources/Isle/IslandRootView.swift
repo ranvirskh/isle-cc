@@ -35,6 +35,9 @@ struct IslandRootView: View {
     @EnvironmentObject var model: IslandModel
     @EnvironmentObject var env: AppEnv
     @State private var shownPhase: IslandStateMachine.Phase = .expanded
+    /// The expanded views are only built while the island is open (and while it fades out), so a collapsed island runs nothing.
+    @State private var renderContent = false
+    @State private var teardown: DispatchWorkItem?
 
     private var flare: CGFloat { model.phase == .collapsed ? 0 : (model.isNotched ? 14 : 12) }
     private var bottom: CGFloat {
@@ -54,13 +57,28 @@ struct IslandRootView: View {
                     .fill(Color.black)
                     .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.5), radius: 14, x: 0, y: 6)
                 content(size: size)
+                LiveActivityView()
+                    .frame(width: size.width, height: size.height)
+                    .opacity(model.phase == .collapsed && model.liveActive ? 1 : 0)
+                    .animation(Motion.ease(0.2, delay: model.phase == .collapsed ? 0.15 : 0, .media), value: model.phase)
+                    .allowsHitTesting(false)
             }
             .frame(width: size.width, height: size.height, alignment: .top)
             .contentShape(IslandShape(flare: flare, bottom: bottom))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.colorScheme, .dark)
-        .onChange(of: model.phase) { _, new in if new != .collapsed { shownPhase = new } }
+        .onChange(of: model.phase) { _, new in
+            teardown?.cancel()
+            if new != .collapsed {
+                shownPhase = new
+                renderContent = true
+            } else {
+                let w = DispatchWorkItem { renderContent = false }
+                teardown = w
+                DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(0.7), execute: w)
+            }
+        }
         .preferredColorScheme(.dark)
     }
 
@@ -68,7 +86,9 @@ struct IslandRootView: View {
     private func content(size: CGSize) -> some View {
         let visible = model.contentVisible
         ZStack(alignment: .top) {
-            if shownPhase == .popup {
+            if !renderContent {
+                Color.clear
+            } else if shownPhase == .popup {
                 PopupView(flare: flare)
                     .transition(.opacity)
             } else {
@@ -358,5 +378,92 @@ struct NowPlayingBanner: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Now playing \(item.title) by \(item.subtitle)")
+    }
+}
+
+/// Collapsed "live activity": cover on the left of the notch, equalizer on the right, only while playing.
+struct LiveActivityView: View {
+    @EnvironmentObject var model: IslandModel
+    @EnvironmentObject var media: MediaController
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Group {
+                if let image = media.artwork {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    ZStack { Color.white.opacity(0.15); Image(systemName: "music.note").font(.system(size: 10)).foregroundStyle(.white.opacity(0.6)) }
+                }
+            }
+            .frame(width: 22, height: 22)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .id(media.now?.track.identity ?? "none")
+            .transition(.opacity)
+            .frame(width: IslandModel.liveSide, alignment: .center)
+            Spacer(minLength: 0)
+            EqualizerView(active: media.now?.isPlaying ?? false && model.liveActive && model.phase == .collapsed)
+                .frame(width: IslandModel.liveSide, alignment: .center)
+        }
+        .frame(maxHeight: .infinity)
+        .padding(.bottom, model.isNotched ? 2 : 0)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Four bars animated by Core Animation, so the motion runs on the GPU and costs almost no CPU.
+struct EqualizerView: NSViewRepresentable {
+    let active: Bool
+
+    func makeNSView(context: Context) -> EqualizerNSView { EqualizerNSView() }
+    func updateNSView(_ v: EqualizerNSView, context: Context) { v.setActive(active && !Motion.reduceMotion) }
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: EqualizerNSView, context: Context) -> CGSize? { CGSize(width: 14, height: 11) }
+}
+
+final class EqualizerNSView: NSView {
+    private var bars: [CALayer] = []
+    private var running = false
+    private let durations: [Double] = [0.42, 0.31, 0.5, 0.36]
+    private let lows: [Double] = [0.35, 0.5, 0.3, 0.45]
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        for _ in 0..<4 {
+            let l = CALayer()
+            l.backgroundColor = NSColor.white.withAlphaComponent(0.92).cgColor
+            l.cornerRadius = 1
+            layer?.addSublayer(l)
+            bars.append(l)
+        }
+    }
+    required init?(coder: NSCoder) { nil }
+
+    override func layout() {
+        super.layout()
+        let w: CGFloat = 2, gap: CGFloat = 1.5, h = bounds.height
+        let total = 4 * w + 3 * gap
+        let x0 = (bounds.width - total) / 2
+        for (i, bar) in bars.enumerated() {
+            bar.bounds = CGRect(x: 0, y: 0, width: w, height: h)
+            bar.position = CGPoint(x: x0 + CGFloat(i) * (w + gap) + w / 2, y: h / 2)
+        }
+    }
+
+    func setActive(_ on: Bool) {
+        guard on != running else { return }
+        running = on
+        for (i, bar) in bars.enumerated() {
+            bar.removeAllAnimations()
+            if on {
+                let a = CABasicAnimation(keyPath: "transform.scale.y")
+                a.fromValue = lows[i]; a.toValue = 1.0
+                a.duration = durations[i]; a.autoreverses = true; a.repeatCount = .infinity
+                a.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                a.timeOffset = Double(i) * 0.11
+                bar.add(a, forKey: "eq")
+            } else {
+                bar.transform = CATransform3DMakeScale(1, 0.3, 1)
+            }
+        }
     }
 }

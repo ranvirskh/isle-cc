@@ -109,6 +109,7 @@ struct SettingsView: View {
                     }
                     Text("Isle also follows the system Reduce Motion setting.").font(.caption).foregroundStyle(.secondary)
                 }
+                Toggle("Cover and equalizer beside the notch while playing", isOn: binding({ settings.liveActivity }, { settings.liveActivity = $0 }))
                 Toggle("Song-change banner (cover flips in, 1.5 s)", isOn: binding({ settings.songBanner }, { settings.songBanner = $0 }))
             }
 

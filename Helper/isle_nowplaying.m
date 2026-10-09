@@ -136,7 +136,9 @@ void isle_run(void) {
             while ((r = [buf rangeOfString:@"\n"]).location != NSNotFound) {
                 NSString *line = [buf substringToIndex:r.location];
                 [buf deleteCharactersInRange:NSMakeRange(0, r.location + 1)];
-                if ([line isEqualToString:@"poll"]) publish(); else command(line);
+                if ([line isEqualToString:@"poll"]) publish();
+                else if ([line isEqualToString:@"artwork"]) { lastArtID = @""; publish(); }   // resend the cover even if unchanged
+                else command(line);
             }
         });
         dispatch_resume(src);

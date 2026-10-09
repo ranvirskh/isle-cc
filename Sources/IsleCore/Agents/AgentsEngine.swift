@@ -124,7 +124,8 @@ public final class AgentsEngine {
 
     /// Everything that is persisted between launches. Offsets, counts, limits: metadata only.
     struct State: Codable {
-        var version = 1
+        /// Bumped when counting rules change, so old totals are rebuilt from the logs instead of kept.
+        var version = 2
         var cursors: [String: FileCursor] = [:]
         /// OpenCode message files already counted: path -> modification time.
         var messageFiles: [String: Double] = [:]
@@ -169,7 +170,7 @@ public final class AgentsEngine {
         guard let stateFile, let data = try? Data(contentsOf: stateFile) else { return }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
-        if let loaded = try? decoder.decode(State.self, from: data), loaded.version == 1 {
+        if let loaded = try? decoder.decode(State.self, from: data), loaded.version == 2 {
             state = loaded
         }
     }

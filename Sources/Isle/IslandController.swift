@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import IsleCore
 
@@ -32,6 +33,7 @@ final class IslandController {
     private var pointerDown = false
     private var ownDragPoll: Timer?
     private var currentScreenID: CGDirectDisplayID?
+    private var cancellables = Set<AnyCancellable>()
 
     init(env: AppEnv) {
         self.env = env
@@ -78,6 +80,7 @@ final class IslandController {
         nc.addObserver(forName: .settingsChanged, object: nil, queue: .main) { [weak self] n in
             MainActor.assumeIsolated {
                 self?.applySettings()
+                self?.updateLive()
                 if (n.object as? String) == SettingsKey.displayChoice { self?.screensChanged(force: true) }
                 if (n.object as? String) == SettingsKey.agentsEnabled { self?.agentsToggled() }
             }
@@ -89,9 +92,18 @@ final class IslandController {
             MainActor.assumeIsolated { self?.panel.orderFrontRegardless(); self?.updateMouse() }
         }
         updateReduceMotion()
+        env.media.$now.map { $0?.isPlaying ?? false }.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
+        updateLive()
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateReduceMotion() }
         }
+    }
+
+    private func updateLive() {
+        let live = settings.liveActivity && (env.media.now?.isPlaying ?? false)
+        guard live != model.liveActive else { return }
+        withAnimation(Motion.spring(Motion.popup, .media)) { model.liveActive = live }
     }
 
     private func updateReduceMotion() { Motion.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
@@ -171,7 +183,7 @@ final class IslandController {
 
     private func hoverRegion() -> CGRect {
         switch machine.phase {
-        case .collapsed: return NotchGeometry.collapsedFrame(model.screen).insetBy(dx: -2, dy: -2)
+        case .collapsed: return NotchGeometry.topAnchoredFrame(model.screen, size: model.shapeSize).insetBy(dx: -2, dy: -2)
         case .popup: return NotchGeometry.topAnchoredFrame(model.screen, size: model.shapeSize).insetBy(dx: -2, dy: -2)
         case .expanded: return NotchGeometry.expandedHoverRect(model.screen, contentSize: model.shapeSize)
         }

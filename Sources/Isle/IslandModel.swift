@@ -14,6 +14,9 @@ final class IslandModel: ObservableObject {
     @Published var agentsEnabled = false
     /// Drives the content fade, which trails the shape on the way in and leads it on the way out.
     @Published var contentVisible = false
+    /// Music is playing: the collapsed island widens to show the cover (left) and an equalizer (right).
+    @Published var liveActive = false
+    static let liveSide: CGFloat = 40
 
     init(screen: ScreenInfo) { self.screen = screen }
 
@@ -27,7 +30,8 @@ final class IslandModel: ObservableObject {
 
     var shapeSize: CGSize {
         switch phase {
-        case .collapsed: return collapsedSize
+        case .collapsed:
+            return liveActive ? CGSize(width: collapsedSize.width + 2 * Self.liveSide, height: collapsedSize.height) : collapsedSize
         case .popup: return popup?.kind == .nowPlaying ? bannerSize : NotchGeometry.popupContentSize(screen)
         case .expanded: return showingDropTargets ? expandedSize(for: .airdrop) : expandedSize(for: tab)
         }

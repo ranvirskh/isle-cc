@@ -637,6 +637,21 @@ final class AgentsEngineLiveTests: AgentsFixtureCase {
         XCTAssertNil(e.nextDeadline(after: end))
     }
 
+    func testResumedSessionReplayingAMessageInAnotherFileIsCountedOnce() throws {
+        let t = now.addingTimeInterval(-3600)
+        let other = roots.claude.appendingPathComponent("-Users-dev-code-billing-app/sess-2.jsonl")
+        // The message is streamed in two blocks (partial, then final) and replayed in a second session file.
+        try write([Fixture.claudeAssistant(t, id: "shared", input: 5, output: 10, cacheRead: 0, cacheWrite: 0),
+                   Fixture.claudeAssistant(t, id: "shared", input: 5, output: 400, cacheRead: 0, cacheWrite: 0)], to: claudeFile)
+        try write([Fixture.claudeAssistant(t, id: "shared", input: 5, output: 10, cacheRead: 0, cacheWrite: 0, session: "sess-2"),
+                   Fixture.claudeAssistant(t, id: "shared", input: 5, output: 400, cacheRead: 0, cacheWrite: 0, session: "sess-2")], to: other)
+        let e = engine()
+        e.initialScan(now: now)
+        let snap = try XCTUnwrap(e.snapshots(now: now).first)
+        XCTAssertEqual(snap.todayTotal.output, 400, "one message, counted once, at its final size")
+        XCTAssertEqual(snap.todayTotal.input, 5)
+    }
+
     func testMetaUserRecordsDoNotStartATask() throws {
         let t = Date().addingTimeInterval(-5)
         try write([Fixture.claudeUser(t, meta: true)], to: claudeFile)

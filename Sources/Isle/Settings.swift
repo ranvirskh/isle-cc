@@ -115,6 +115,10 @@ final class Settings: ObservableObject {
         get { Set((d.stringArray(forKey: SettingsKey.animationsOff) ?? []).compactMap(Motion.Category.init(rawValue:))) }
         set { set(newValue.map(\.rawValue).sorted(), SettingsKey.animationsOff) }
     }
+    var liveActivity: Bool {
+        get { d.bool(forKey: SettingsKey.liveActivity) }
+        set { set(newValue, SettingsKey.liveActivity) }
+    }
     var songBanner: Bool {
         get { d.bool(forKey: SettingsKey.songBanner) }
         set { set(newValue, SettingsKey.songBanner) }

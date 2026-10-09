@@ -211,6 +211,16 @@ final class MediaController: ObservableObject {
         if new != now { now = new }
         if newIdentity != oldIdentity {
             artwork = newIdentity.flatMap { artworkByTrack[$0] }
+            if artwork == nil, newIdentity != nil, mode == .system || scripting?.bundleID == KnownBundle.spotify {
+                // The cover normally arrives with the track; if it has not shortly after, ask the helper to resend it.
+                let wanted = newIdentity
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    MainActor.assumeIsolated {
+                        guard let self, self.now?.track.identity == wanted, self.artwork == nil else { return }
+                        self.helper.send("artwork")
+                    }
+                }
+            }
             pendingIdentity = nil
             lyricsService.trackChanged(new?.track)
             if let new, new.isPlaying, oldIdentity != nil || Date().timeIntervalSince(launchedAt) > 8, !demoMode {

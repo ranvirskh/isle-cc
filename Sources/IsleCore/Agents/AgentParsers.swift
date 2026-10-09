@@ -58,14 +58,17 @@ public enum ClaudeCodeParser {
                 cacheWrite: max(0, Loose.int(usage["cache_creation_input_tokens"]) ?? 0),
                 reasoning: max(0, Loose.int((usage["output_tokens_details"] as? [String: Any])?["thinking_tokens"]) ?? 0)
             )
-            // The same API message is logged once per content block with the same id; count it once.
-            var delta = totals
+            // The same API message is logged once per content block, and resumed or forked sessions replay it in
+            // other files. Each event carries the message's cumulative totals under a per-message key, so the
+            // aggregator replaces the earlier figure instead of adding to it: a message is counted exactly once.
             if let id = sanitizedID(message["id"]) {
-                if let seen = context.totals(forID: id) { delta = totals.delta(from: seen) }
                 context.remember(id: id, totals: totals)
-            }
-            if !delta.isZero {
-                records.append(.usage(UsageEvent(agent: .claudeCode, timestamp: timestamp, model: model, tokens: delta,
+                if !totals.isZero {
+                    records.append(.usage(UsageEvent(agent: .claudeCode, timestamp: timestamp, model: model, tokens: totals,
+                                                     sessionID: session, project: context.project, replaceKey: "claude|" + id)))
+                }
+            } else if !totals.isZero {
+                records.append(.usage(UsageEvent(agent: .claudeCode, timestamp: timestamp, model: model, tokens: totals,
                                                  sessionID: session, project: context.project, replaceKey: nil)))
             }
         }
