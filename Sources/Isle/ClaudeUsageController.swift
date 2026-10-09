@@ -8,11 +8,13 @@ import IsleCore
 final class ClaudeUsageController: ObservableObject {
     @Published private(set) var windows: [LimitWindow] = []
     @Published private(set) var failed = false
+    /// A terminal or the Claude app is the frontmost app: the 5-hour limit is shown whatever its level.
+    @Published private(set) var codingAppActive = false
 
     /// The 5-hour window for the collapsed pill, only above 50%.
     var pillPercent: Double? {
         guard let five = windows.first(where: { $0.id == "five_hour" }), LimitFormat.isCurrent(five, now: Date()),
-              five.usedPercent > ClaudeUsage.fiveHourShowAbove else { return nil }
+              codingAppActive || five.usedPercent > ClaudeUsage.fiveHourShowAbove else { return nil }
         return five.usedPercent
     }
 
@@ -25,12 +27,23 @@ final class ClaudeUsageController: ObservableObject {
     private static let interval: TimeInterval = 300
 
     func start() {
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] n in
+            let id = (n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
+            MainActor.assumeIsolated { self?.frontChanged(id) }
+        }
+        frontChanged(NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
         NotificationCenter.default.addObserver(forName: .settingsChanged, object: nil, queue: .main) { [weak self] n in
             MainActor.assumeIsolated {
                 if (n.object as? String) == SettingsKey.claudeUsage { self?.sync() }
             }
         }
         sync()
+    }
+
+    private func frontChanged(_ bundleID: String?) {
+        let active = bundleID.map { ClaudeUsage.codingBundleIDs.contains($0) } ?? false
+        if active != codingAppActive { codingAppActive = active; if active { refreshIfStale() } }
     }
 
     private func sync() {

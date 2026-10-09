@@ -911,6 +911,8 @@ final class ClaudeUsageDisplayTests: XCTestCase {
         func w(_ id: String, _ pct: Double) -> LimitWindow { LimitWindow(id: id, usedPercent: pct, windowMinutes: nil, resetsAt: now.addingTimeInterval(600), observedAt: now, source: "") }
         XCTAssertEqual(ClaudeUsage.displayed([w("five_hour", 50), w("seven_day", 20)], now: now).map(\.id), ["seven_day"])
         XCTAssertEqual(ClaudeUsage.displayed([w("five_hour", 50.1), w("seven_day", 20)], now: now).map(\.id), ["five_hour", "seven_day"])
+        XCTAssertEqual(ClaudeUsage.displayed([w("five_hour", 10), w("seven_day", 20)], now: now, alwaysShowFiveHour: true).map(\.id), ["five_hour", "seven_day"])
+        XCTAssertTrue(ClaudeUsage.codingBundleIDs.contains("com.apple.Terminal"))
         XCTAssertEqual(ClaudeUsage.summary([w("five_hour", 30), w("seven_day", 20)], now: now), "wk 20%")
     }
 }

@@ -169,8 +169,8 @@ struct HeaderView: View {
                 }
             }
             Spacer(minLength: model.isNotched ? model.collapsedSize.width + 16 : 8)
-            if settings.claudeUsage, !ClaudeUsage.displayed(usage.windows, now: Date()).isEmpty {
-                UsageChip(windows: usage.windows, stale: usage.failed)
+            if settings.claudeUsage, !ClaudeUsage.displayed(usage.windows, now: Date(), alwaysShowFiveHour: usage.codingAppActive).isEmpty {
+                UsageChip(windows: usage.windows, stale: usage.failed, alwaysShowFiveHour: usage.codingAppActive)
             } else if settings.agentHeaderChip, settings.agentsEnabled, let top = LimitFormat.highestPercent(agents.snapshots, now: Date()) {
                 Text("\(Int(top.rounded()))%")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -584,10 +584,11 @@ struct WeatherChip: View {
 struct UsageChip: View {
     let windows: [LimitWindow]
     let stale: Bool
+    var alwaysShowFiveHour = false
 
     var body: some View {
         let now = Date()
-        let shown = ClaudeUsage.displayed(windows, now: now)
+        let shown = ClaudeUsage.displayed(windows, now: now, alwaysShowFiveHour: alwaysShowFiveHour)
         if !shown.isEmpty {
             HStack(spacing: 6) {
                 Image(systemName: "sparkle").font(.system(size: 9, weight: .bold)).foregroundStyle(.white.opacity(0.6))
