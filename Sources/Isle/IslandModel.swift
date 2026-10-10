@@ -12,6 +12,9 @@ final class IslandModel: ObservableObject {
     /// A drag from another app is heading for the notch: show the AirDrop / Shelf drop targets.
     @Published var externalDrag = false
     @Published var agentsEnabled = false
+    @Published var toolsEnabled = false
+    @Published var clipboardEnabled = false
+    @Published var statsEnabled = false
     /// Drives the content fade, which trails the shape on the way in and leads it on the way out.
     @Published var contentVisible = false
     /// Music is playing: the collapsed island widens to show the cover (left) and an equalizer (right).
@@ -45,7 +48,7 @@ final class IslandModel: ObservableObject {
     @Published var theme: IslandTheme = .classic
 
     func expandedSize(for tab: IslandTab) -> CGSize {
-        theme.adjust(NotchGeometry.expandedSize(screen, tab: tab == .agents && !agentsEnabled ? .home : tab))
+        theme.adjust(NotchGeometry.expandedSize(screen, tab: visibleTabs.contains(tab) ? tab : .home))
     }
 
     var showingDropTargets: Bool { externalDrag && phase == .expanded }
@@ -75,7 +78,7 @@ final class IslandModel: ObservableObject {
 
     /// Largest shape the island can take on this screen; the window is sized to this once.
     var maxContentSize: CGSize {
-        let tabs: [IslandTab] = agentsEnabled ? IslandTab.allCases : [.home, .shelf]
+        let tabs = visibleTabs
         var w: CGFloat = max(NotchGeometry.popupContentSize(screen).width, bannerSize.width)
         var h: CGFloat = max(NotchGeometry.popupContentSize(screen).height, bannerSize.height)
         for t in tabs {
@@ -84,6 +87,8 @@ final class IslandModel: ObservableObject {
         }
         return CGSize(width: w, height: h)
     }
+
+    var visibleTabs: [IslandTab] { IslandTab.visible(agents: agentsEnabled, clipboard: clipboardEnabled, stats: statsEnabled, tools: toolsEnabled) }
 
     var isNotched: Bool { screen.hasNotch }
 }
@@ -111,6 +116,10 @@ final class AppEnv: ObservableObject {
     let weather = WeatherController()
     let fullScreen = FullScreenMonitor()
     let shelf = ShelfController()
+    let tools = ToolsController()
+    let clipboard = ClipboardController()
+    let stats = StatsController()
+    let hotkeys = HotkeyController()
     let settings = Settings.shared
     var island: IslandController!
     var lock: LockController?

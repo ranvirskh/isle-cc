@@ -33,6 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         env.media.onSongStarted = { [weak island] t in island?.songStarted(t) }
         env.media.start()
         env.shelf.start()
+        env.clipboard.start()
+        env.hotkeys.onToggle = { [weak island] in island?.toggleFromShortcut() }
+        env.hotkeys.onTab = { [weak island] i in island?.showTab(index: i) }
+        env.hotkeys.start()
         env.calendar.start()
         env.devices.start()
         env.agents.start()
@@ -76,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         env.agents.appWillTerminate()
+        env.tools.appWillTerminate()
         env.media.stop()
     }
 

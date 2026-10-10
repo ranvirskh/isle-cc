@@ -32,6 +32,13 @@ Off by default. Reads only local metadata from Claude Code, Codex, OpenCode and 
 - **Lock screen widgets** (opt-in): weather, charging and connected Bluetooth batteries, display only, same private-API caveat as the lock card.
 - **Themes:** Classic, Minimalistic, Frutiger Aero (Settings > Look).
 
+## Optional tabs and shortcuts (all off by default, Settings > Look)
+- **Tools:** Keep Awake (power assertion, 15 minutes to 4 hours or until turned off).
+- **Clipboard:** last 12 copied texts, memory only, never written to disk; copies that password managers mark as concealed or transient are skipped.
+- **System:** CPU, memory, network and disk, sampled once a second only while the tab is open.
+- **Global shortcuts:** Control-Option-Space opens or closes the island; Control-Option-1 to 6 pick a tab.
+- **External displays:** the island appears only on the built-in display unless "Show the island on external displays" is on.
+
 ## Animations
 Settings > Animations: master switch, style (Smooth / Snappy / Bouncy / Minimal), speed, and a switch for each group (island opening, content fade, tabs, artwork/media, lyrics, banner flip, button press). Reduce Motion is respected. All timings live in `Sources/IsleCore/Motion.swift`.
 

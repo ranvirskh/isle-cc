@@ -159,6 +159,27 @@ final class Settings: ObservableObject {
         get { IslandTheme(rawValue: d.string(forKey: SettingsKey.theme) ?? "") ?? .classic }
         set { set(newValue.rawValue, SettingsKey.theme) }
     }
+    var externalDisplays: Bool {
+        get { d.bool(forKey: SettingsKey.externalDisplays) }
+        set { set(newValue, SettingsKey.externalDisplays) }
+    }
+    var toolsEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.toolsEnabled) }
+        set { set(newValue, SettingsKey.toolsEnabled) }
+    }
+    var clipboardEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.clipboardEnabled) }
+        set { set(newValue, SettingsKey.clipboardEnabled) }
+    }
+    var statsEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.statsEnabled) }
+        set { set(newValue, SettingsKey.statsEnabled) }
+    }
+    var shortcutsEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.shortcutsEnabled) }
+        set { set(newValue, SettingsKey.shortcutsEnabled) }
+    }
+    var visibleTabs: [IslandTab] { IslandTab.visible(agents: agentsEnabled, clipboard: clipboardEnabled, stats: statsEnabled, tools: toolsEnabled) }
     var chargingIndicator: ChargingIndicatorMode {
         get { ChargingIndicatorMode(rawValue: d.string(forKey: SettingsKey.chargingIndicator) ?? "") ?? .whileCharging }
         set { set(newValue.rawValue, SettingsKey.chargingIndicator) }

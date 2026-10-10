@@ -37,6 +37,8 @@ final class IslandController {
     private var chargingBrief = false
     private var chargingBriefWork: DispatchWorkItem?
     private var wasCharging = false
+    /// No allowed display is connected (external displays off, lid closed): nothing is drawn and the mouse is ignored.
+    private var hiddenOnDisallowedScreen = false
 
     init(env: AppEnv) {
         self.env = env
@@ -49,6 +51,9 @@ final class IslandController {
 
     func start() {
         model.agentsEnabled = settings.agentsEnabled
+        model.toolsEnabled = settings.toolsEnabled
+        model.clipboardEnabled = settings.clipboardEnabled
+        model.statsEnabled = settings.statsEnabled
         model.theme = settings.theme
         applySettings()
         let panel = IslandPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -67,7 +72,7 @@ final class IslandController {
 
         let root = IslandRootView().environmentObject(env.weather).environmentObject(model).environmentObject(env).environmentObject(env.media)
             .environmentObject(env.calendar).environmentObject(env.devices).environmentObject(env.agents).environmentObject(env.usage)
-            .environmentObject(env.shelf).environmentObject(settings)
+            .environmentObject(env.shelf).environmentObject(env.tools).environmentObject(env.clipboard).environmentObject(env.stats).environmentObject(settings)
         hosting = NSHostingView(rootView: AnyView(root))
         hosting.sizingOptions = []
         hosting.wantsLayer = true
@@ -85,8 +90,11 @@ final class IslandController {
             MainActor.assumeIsolated {
                 self?.applySettings()
                 self?.updateLive()
-                if (n.object as? String) == SettingsKey.displayChoice { self?.screensChanged(force: true) }
-                if (n.object as? String) == SettingsKey.agentsEnabled { self?.agentsToggled() }
+                if let k = n.object as? String, k == SettingsKey.displayChoice || k == SettingsKey.externalDisplays { self?.screensChanged(force: true) }
+                switch n.object as? String {
+                case SettingsKey.agentsEnabled, SettingsKey.toolsEnabled, SettingsKey.clipboardEnabled, SettingsKey.statsEnabled: self?.agentsToggled()
+                default: break
+                }
             }
         }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
@@ -118,7 +126,8 @@ final class IslandController {
     /// a full-screen Space; the privacy dots do not, because they are about safety rather than music.
     private func updateLive() {
         // With the live-items setting off, the notch only widens for Claude usage, while a terminal or Claude is in front.
-        let wings = settings.liveWings
+        // Without a notch (external displays) there is no real notch to hide inside, so live items always show.
+        let wings = settings.liveWings || !model.isNotched
         let media = wings && settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
         let privacy = wings && settings.privacyIndicator && env.privacy.state.isActive
         let privacyState = wings ? env.privacy.state : PrivacyState()
@@ -172,18 +181,31 @@ final class IslandController {
 
     private func agentsToggled() {
         model.agentsEnabled = settings.agentsEnabled
-        if !settings.agentsEnabled, model.tab == .agents { model.tab = .home }
+        model.toolsEnabled = settings.toolsEnabled
+        model.clipboardEnabled = settings.clipboardEnabled
+        model.statsEnabled = settings.statsEnabled
+        if !model.visibleTabs.contains(model.tab) { model.tab = .home }
         positionWindow()
     }
 
     // MARK: Screens
 
+    /// The island lives on the built-in display, and on external displays only when the setting is on.
+    static func isAllowed(_ screen: NSScreen) -> Bool {
+        if Settings.shared.externalDisplays { return true }
+        guard let id = screen.displayID else { return false }
+        return CGDisplayIsBuiltin(id) != 0
+    }
+
+    /// Falls back to the first screen when none is allowed (clamshell with external displays off); the panel is then hidden.
     static func pickScreen(choice: String) -> NSScreen {
-        let screens = NSScreen.screens
-        if choice == "main", let s = NSScreen.main ?? screens.first { return s }
+        let all = NSScreen.screens
+        let screens = all.filter(isAllowed)
+        guard !screens.isEmpty else { return NSScreen.main ?? all[0] }
+        if choice == "main", let s = NSScreen.main, screens.contains(s) { return s }
         if choice != "cursor", choice != "main", let s = screens.first(where: { $0.uuidString == choice }) { return s }
         let idx = NotchGeometry.screenIndex(containing: NSEvent.mouseLocation, frames: screens.map(\.frame))
-        return idx.map { screens[$0] } ?? NSScreen.main ?? screens[0]
+        return idx.map { screens[$0] } ?? screens[0]
     }
 
     private func screensChanged(force: Bool = false) {
@@ -195,12 +217,19 @@ final class IslandController {
             model.screen = info
             currentScreenID = target.displayID
             positionWindow()
+            updateLive()
         }
     }
 
     private func positionWindow() {
         let frame = NotchGeometry.openWindowFrame(model.screen, contentSize: model.maxContentSize)
         panel.setFrame(frame, display: true)
+        if let id = currentScreenID, let s = NSScreen.screens.first(where: { $0.displayID == id }), !Self.isAllowed(s) {
+            hiddenOnDisallowedScreen = true
+            panel.orderOut(nil)
+            return
+        }
+        hiddenOnDisallowedScreen = false
         panel.orderFrontRegardless()
         updateMouse()
     }
@@ -239,18 +268,21 @@ final class IslandController {
 
     private func hoverRegion() -> CGRect {
         switch machine.phase {
-        case .collapsed: return NotchGeometry.topAnchoredFrame(model.screen, size: model.shapeSize).insetBy(dx: -2, dy: -2)
+        case .collapsed:
+            let r = NotchGeometry.topAnchoredFrame(model.screen, size: model.shapeSize)
+            // No notch (external display): the 9 pt pill is hard to hit, so accept a bigger area around it.
+            return model.isNotched ? r.insetBy(dx: -2, dy: -2) : CGRect(x: r.minX - 30, y: r.minY - 12, width: r.width + 60, height: r.height + 14)
         case .popup: return NotchGeometry.topAnchoredFrame(model.screen, size: model.shapeSize).insetBy(dx: -2, dy: -2)
         case .expanded: return NotchGeometry.expandedHoverRect(model.screen, contentSize: model.shapeSize)
         }
     }
 
     private func updateMouse() {
+        guard !hiddenOnDisallowedScreen else { return }
         let p = NSEvent.mouseLocation
         // Follow the cursor to another display, but only while idle.
         if settings.displayChoice == "cursor", machine.phase == .collapsed, !hoveredFlag, !machine.isDragging,
-           let idx = NotchGeometry.screenIndex(containing: p, frames: NSScreen.screens.map(\.frame)),
-           NSScreen.screens[idx].displayID != currentScreenID {
+           Self.pickScreen(choice: "cursor").displayID != currentScreenID {
             screensChanged(force: true)
         }
         let inside = hoverRegion().contains(p)
@@ -372,6 +404,19 @@ final class IslandController {
         }
         // Tab reset and key release on collapse.
         if new == .collapsed { model.externalDrag = machine.isDragging ? model.externalDrag : false }
+    }
+
+    /// Global shortcut: open the island, or close it when it is already open.
+    func toggleFromShortcut() {
+        handle(machine.phase == .expanded ? .forceCollapse : .forceExpand)
+    }
+
+    /// Global shortcut: jump to the nth visible tab (opening the island first if needed).
+    func showTab(index: Int) {
+        let tabs = model.visibleTabs
+        guard tabs.indices.contains(index) else { return }
+        if machine.phase != .expanded { handle(.forceExpand) }
+        setTab(tabs[index])
     }
 
     func setTab(_ tab: IslandTab) {

@@ -89,10 +89,11 @@ struct SettingsView: View {
                         Text("\(Int(settings.hoverDelay * 1000)) ms").monospacedDigit().frame(width: 60, alignment: .trailing)
                     }
                 }
+                Toggle("Show the island on external displays (off: built-in display only)", isOn: binding({ settings.externalDisplays }, { settings.externalDisplays = $0 }))
                 Picker("Display", selection: binding({ settings.displayChoice }, { settings.displayChoice = $0 })) {
                     Text("The display with the cursor").tag("cursor")
                     Text("Main display").tag("main")
-                    ForEach(NSScreen.screens, id: \.self) { s in
+                    ForEach(NSScreen.screens.filter(IslandController.isAllowed), id: \.self) { s in
                         if let id = s.uuidString { Text(s.localizedName).tag(id) }
                     }
                 }
@@ -165,9 +166,13 @@ struct SettingsView: View {
                 }
                 Toggle("Show browser downloads in the notch (watches your Downloads folder for file names and sizes)", isOn: binding({ settings.downloadsIndicator }, { settings.downloadsIndicator = $0 }))
                 Toggle("Indicator when the microphone, camera or screen recording is on", isOn: binding({ settings.privacyIndicator }, { settings.privacyIndicator = $0 }))
-                Toggle("Widen the notch for live items (cover, charging, downloads). Off keeps it hidden inside the real notch", isOn: binding({ settings.liveWings }, { settings.liveWings = $0 }))
+                Toggle("Widen the notch for live items (cover, charging, downloads). Off keeps it hidden inside the real notch (always on for displays without a notch)", isOn: binding({ settings.liveWings }, { settings.liveWings = $0 }))
                 Toggle("Cover and equalizer beside the notch while playing", isOn: binding({ settings.liveActivity }, { settings.liveActivity = $0 }))
                 Toggle("Song-change banner (cover flips in, 1.5 s)", isOn: binding({ settings.songBanner }, { settings.songBanner = $0 }))
+                Toggle("Tools tab: Keep Awake (stop the Mac from sleeping for a set time)", isOn: binding({ settings.toolsEnabled }, { settings.toolsEnabled = $0 }))
+                Toggle("Clipboard tab: last 12 copied texts, memory only, password-manager copies skipped", isOn: binding({ settings.clipboardEnabled }, { settings.clipboardEnabled = $0 }))
+                Toggle("System tab: CPU, memory, network and disk (sampled only while the tab is open)", isOn: binding({ settings.statsEnabled }, { settings.statsEnabled = $0 }))
+                Toggle("Global shortcuts: Control-Option-Space opens or closes the island, Control-Option-1 to 6 pick a tab", isOn: binding({ settings.shortcutsEnabled }, { settings.shortcutsEnabled = $0 }))
             }
 
             Section("Calendar") {

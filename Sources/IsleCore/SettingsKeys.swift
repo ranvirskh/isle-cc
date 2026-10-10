@@ -43,6 +43,11 @@ public enum SettingsKey {
     public static let liveWings = "liveWings"                     // widen the notch for live items (cover, charging, ...), default false
     public static let liveActivity = "liveActivity"               // cover + equalizer beside the notch while playing, default true
     public static let songBanner = "songBanner"                   // default true
+    public static let externalDisplays = "externalDisplays"       // show the island on external displays, default false
+    public static let toolsEnabled = "toolsEnabled"               // Tools tab (Keep Awake), default false
+    public static let clipboardEnabled = "clipboardEnabled"       // Clipboard tab, memory only, default false
+    public static let statsEnabled = "statsEnabled"               // System tab (CPU, memory, network, disk), default false
+    public static let shortcutsEnabled = "shortcutsEnabled"       // global hotkeys, default false
     public static let lyricsContact = "lyricsContact"             // optional contact appended to the User-Agent
 
     public static let defaults: [String: Any] = [
@@ -84,12 +89,17 @@ public enum SettingsKey {
         liveWings: false,
         liveActivity: true,
         songBanner: true,
+        externalDisplays: false,
+        toolsEnabled: false,
+        clipboardEnabled: false,
+        statsEnabled: false,
+        shortcutsEnabled: false,
         lyricsContact: "",
     ]
 }
 
 public enum IsleInfo {
-    public static let version = "1.0.0"
+    public static let version = "1.2.0"
     public static let bundleID = "local.isle.app"
 
     /// LRCLIB requires clients to identify themselves: name, version, and a homepage or contact.

@@ -24,7 +24,20 @@ public struct ScreenInfo: Equatable {
 }
 
 public enum IslandTab: String, CaseIterable, Codable {
-    case home, shelf, agents
+    case home, shelf, tools, clipboard, stats, agents
+
+    /// Tabs shown in the header; Tools, Clipboard, System and AI agents are opt-in.
+    public static func visible(agents: Bool, clipboard: Bool, stats: Bool, tools: Bool) -> [IslandTab] {
+        allCases.filter { t in
+            switch t {
+            case .agents: return agents
+            case .clipboard: return clipboard
+            case .stats: return stats
+            case .tools: return tools
+            default: return true
+            }
+        }
+    }
 }
 
 public enum NotchGeometry {
@@ -63,6 +76,7 @@ public enum NotchGeometry {
         switch tab {
         case .home: base = CGSize(width: 700, height: 208)
         case .shelf: base = CGSize(width: 700, height: 208)
+        case .tools, .clipboard, .stats: base = CGSize(width: 700, height: 208)
         case .agents: base = CGSize(width: 700, height: 236)
         }
         let collapsed = collapsedSize(s)
