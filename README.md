@@ -10,6 +10,12 @@ A macOS dynamic-island utility for the notch: now playing with synced lyrics, ca
 
 Developer flags: `--demo` (fake playback), `--simulate-lock` (lock card in a normal window), `--expand [home|shelf|agents]`, `--debug-control` (scripted control), `--lyrics-probe "Title|Artist|Album|Seconds"`.
 
+## Install with Homebrew
+    brew install --cask ranvirskh/isle/isle     # or: brew tap ranvirskh/isle, then brew install --cask isle
+    brew upgrade --cask isle                    # after a new release
+
+The app is signed with a local identity and is not notarized: on first open, right-click it and choose Open.
+
 ## Permissions
 Calendar (agenda), Automation (Spotify / Music control), Bluetooth (device pop-ups), and Location only if you turn on weather from your Mac's location. Nothing else. Not sandboxed.
 
