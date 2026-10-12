@@ -125,7 +125,7 @@ public enum SettingsKey {
 }
 
 public enum IsleInfo {
-    public static let version = "1.2.0"
+    public static let version = "1.3.0"
     public static let bundleID = "local.isle.app"
 
     /// LRCLIB requires clients to identify themselves: name, version, and a homepage or contact.
