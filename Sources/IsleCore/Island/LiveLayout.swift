@@ -12,7 +12,7 @@ public enum LiveLayout {
     public static func side(mediaLive: Bool, privacyIcons: Int, chargingLive: Bool, downloadLive: Bool = false, usageLive: Bool = false, usageAlert: Bool = false) -> CGFloat {
         var right: CGFloat = 12
         right += CGFloat(privacyIcons) * 15
-        if usageLive { right += 30 }
+        if usageLive { right += 50 }   // room for "5h 100%"
         if mediaLive { right += 22 } else if chargingLive || downloadLive { right += downloadLive ? 40 : 30 }
         let left: CGFloat = (mediaLive ? coverSide : 0) + (usageAlert ? alertSide : 0)
         let hasRightContent = privacyIcons > 0 || usageLive || mediaLive || chargingLive || downloadLive

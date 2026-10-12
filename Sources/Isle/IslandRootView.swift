@@ -471,8 +471,11 @@ struct LiveActivityView: View {
             HStack(spacing: 5) {
                 PrivacyDots(state: model.privacy)
                 if let p = model.usagePercent {
-                    Text("\(Int(p.rounded()))%").font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit()
-                        .foregroundStyle(Color(severity: LimitSeverity(usedPercent: p))).lineLimit(1).fixedSize()
+                    HStack(spacing: 3) {
+                        Text("5h").foregroundStyle(.white.opacity(0.6))
+                        Text("\(Int(p.rounded()))%").foregroundStyle(Color(severity: LimitSeverity(usedPercent: p)))
+                    }
+                    .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).fixedSize()
                 }
                 if !model.mediaLive, let d = model.download {
                     Text(DownloadTracker.format(bytes: d.bytes)).font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()

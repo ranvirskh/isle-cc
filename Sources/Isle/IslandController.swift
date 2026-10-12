@@ -143,6 +143,7 @@ final class IslandController {
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
                 || privacyState != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
+        Log.write("live: media=\(media) privacy=\(privacy) charging=\(charging) usage=\(usage.map { String(Int($0)) } ?? "nil") alert=\(alert != nil) active=\(env.usage.codingAppActive) notched=\(model.isNotched)")
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
             model.privacyLive = privacy
