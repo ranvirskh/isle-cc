@@ -24,7 +24,7 @@ public struct ScreenInfo: Equatable {
 }
 
 public enum IslandTab: String, CaseIterable, Codable {
-    case home, shelf, tools, clipboard, stats, reminders, mirror, scripts, agents
+    case home, shelf, tools, clipboard, stats, calendar, mirror, scripts, agents
 
     /// Tabs shown in the header: Home always, then the enabled tabs in the user's order. Tabs missing from `order`
     /// (new ones, or an empty list) follow in their built-in order.
@@ -71,7 +71,7 @@ public enum NotchGeometry {
         switch tab {
         case .home: base = CGSize(width: 700, height: 208)
         case .shelf: base = CGSize(width: 700, height: 208)
-        case .tools, .clipboard, .stats, .reminders, .mirror, .scripts: base = CGSize(width: 700, height: 208)
+        case .tools, .clipboard, .stats, .calendar, .mirror, .scripts: base = CGSize(width: 700, height: 208)
         case .agents: base = CGSize(width: 700, height: 236)
         }
         let collapsed = collapsedSize(s)

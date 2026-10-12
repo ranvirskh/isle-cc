@@ -171,7 +171,7 @@ struct SettingsView: View {
                 Toggle("Cover and equalizer beside the notch while playing", isOn: binding({ settings.liveActivity }, { settings.liveActivity = $0 }))
                 Toggle("Song-change banner (cover flips in, 1.5 s)", isOn: binding({ settings.songBanner }, { settings.songBanner = $0 }))
                 Toggle("Shelf & AirDrop tab", isOn: binding({ settings.shelfEnabled }, { settings.shelfEnabled = $0 }))
-                Toggle("Reminders tab: open Apple Reminders, tick them off (asks for Reminders access)", isOn: binding({ settings.remindersEnabled }, { settings.remindersEnabled = $0 }))
+                Toggle("Calendar tab: month view with the selected day's agenda", isOn: binding({ settings.calendarTabEnabled }, { settings.calendarTabEnabled = $0 }))
                 Toggle("Mirror tab: camera preview, on only while the tab is open (asks for Camera access)", isOn: binding({ settings.mirrorEnabled }, { settings.mirrorEnabled = $0 }))
                 Toggle("Scripts tab: run your saved shell commands (add them in the Scripts section below)", isOn: binding({ settings.scriptsEnabled }, { settings.scriptsEnabled = $0 }))
                 Toggle("Parallax: content shifts slightly with the pointer while the island is open", isOn: binding({ settings.parallaxHover }, { settings.parallaxHover = $0 }))
@@ -344,7 +344,7 @@ struct TabOrderRow: View {
         case .tools: return "Tools"
         case .clipboard: return "Clipboard"
         case .stats: return "System"
-        case .reminders: return "Reminders"
+        case .calendar: return "Calendar"
         case .mirror: return "Mirror"
         case .scripts: return "Scripts"
         case .agents: return "AI agents"

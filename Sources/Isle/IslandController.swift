@@ -69,7 +69,7 @@ final class IslandController {
 
         let root = IslandRootView().environmentObject(env.weather).environmentObject(model).environmentObject(env).environmentObject(env.media)
             .environmentObject(env.calendar).environmentObject(env.devices).environmentObject(env.agents).environmentObject(env.usage)
-            .environmentObject(env.shelf).environmentObject(env.tools).environmentObject(env.clipboard).environmentObject(env.reminders).environmentObject(env.mirror).environmentObject(env.scripts).environmentObject(env.stats).environmentObject(settings)
+            .environmentObject(env.shelf).environmentObject(env.tools).environmentObject(env.clipboard).environmentObject(env.mirror).environmentObject(env.scripts).environmentObject(env.stats).environmentObject(settings)
         hosting = NSHostingView(rootView: AnyView(root))
         hosting.sizingOptions = []
         hosting.wantsLayer = true
@@ -90,7 +90,7 @@ final class IslandController {
                 if let k = n.object as? String, k == SettingsKey.displayChoice || k == SettingsKey.externalDisplays { self?.screensChanged(force: true) }
                 switch n.object as? String {
                 case SettingsKey.agentsEnabled, SettingsKey.toolsEnabled, SettingsKey.clipboardEnabled, SettingsKey.statsEnabled,
-                     SettingsKey.remindersEnabled, SettingsKey.mirrorEnabled, SettingsKey.scriptsEnabled, SettingsKey.shelfEnabled, SettingsKey.tabOrder:
+                     SettingsKey.calendarTabEnabled, SettingsKey.mirrorEnabled, SettingsKey.scriptsEnabled, SettingsKey.shelfEnabled, SettingsKey.tabOrder:
                     self?.agentsToggled()
                 default: break
                 }

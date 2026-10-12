@@ -3,13 +3,16 @@ import AVFoundation
 
 struct MirrorView: View {
     @EnvironmentObject var mirror: MirrorController
+    @EnvironmentObject var model: IslandModel
 
     var body: some View {
         Group {
             switch mirror.state {
             case .running:
                 CameraPreview(session: mirror.session)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .frame(width: 140, height: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .denied:
                 note("Camera access is off", "Allow Isle in System Settings > Privacy & Security > Camera.", button: ("Open Privacy Settings", mirror.openPrivacySettings))
             case .noCamera:
@@ -19,7 +22,9 @@ struct MirrorView: View {
             }
         }
         .foregroundStyle(.white)
-        .onAppear { mirror.start() }
+        // The expanded views stay alive while the island is collapsed, so the camera follows the island's phase too.
+        .onAppear { if model.phase == .expanded { mirror.start() } }
+        .onChange(of: model.phase) { _, phase in if phase == .expanded { mirror.start() } else { mirror.stop() } }
         .onDisappear { mirror.stop() }
     }
 
@@ -34,19 +39,34 @@ struct MirrorView: View {
     }
 }
 
-/// Mirrored (selfie) preview of the capture session.
+/// Mirrored (selfie) preview of the capture session. The preview layer is the view's own backing layer, and the
+/// mirroring is applied on every layout because the layer only gets its connection once the session has an input.
 private struct CameraPreview: NSViewRepresentable {
     let session: AVCaptureSession
 
-    func makeNSView(context: Context) -> NSView {
-        let v = NSView()
+    final class PreviewView: NSView {
+        override func makeBackingLayer() -> CALayer { AVCaptureVideoPreviewLayer() }
+        var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+
+        override func layout() {
+            super.layout()
+            if let c = previewLayer.connection, c.isVideoMirroringSupported {
+                c.automaticallyAdjustsVideoMirroring = false
+                c.isVideoMirrored = true
+            }
+        }
+    }
+
+    func makeNSView(context: Context) -> PreviewView {
+        let v = PreviewView()
         v.wantsLayer = true
-        let layer = AVCaptureVideoPreviewLayer(session: session)
-        layer.videoGravity = .resizeAspectFill
-        layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-        if let c = layer.connection, c.isVideoMirroringSupported { c.automaticallyAdjustsVideoMirroring = false; c.isVideoMirrored = true }
-        v.layer = layer
+        v.previewLayer.session = session
+        v.previewLayer.videoGravity = .resizeAspectFill
         return v
     }
-    func updateNSView(_ v: NSView, context: Context) {}
+
+    func updateNSView(_ v: PreviewView, context: Context) {
+        if v.previewLayer.session !== session { v.previewLayer.session = session }
+        v.needsLayout = true
+    }
 }

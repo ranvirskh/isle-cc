@@ -12,6 +12,10 @@ final class CalendarController: ObservableObject {
     @Published private(set) var selectedDay: Date?
     @Published private(set) var calendars: [(id: String, title: String, color: NSColor)] = []
 
+    /// First day of the month shown in the Calendar tab, and the days in it that have events.
+    @Published private(set) var monthAnchor: Date = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+    @Published private(set) var eventDays: Set<Date> = []
+
     private let store = EKEventStore()
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
@@ -42,11 +46,14 @@ final class CalendarController: ObservableObject {
     }
 
     private func updateAccess() {
+        let new: Access
         switch EKEventStore.authorizationStatus(for: .event) {
-        case .fullAccess: access = .granted
-        case .notDetermined: access = .unknown
-        default: access = .denied
+        case .fullAccess: new = .granted
+        case .notDetermined: new = .unknown
+        default: new = .denied
         }
+        // @Published announces every assignment, even of an equal value, so only write when it changed.
+        if new != access { access = new }
     }
 
     /// Asks for permission the first time the calendar is shown.
@@ -106,6 +113,39 @@ final class CalendarController: ObservableObject {
         guard let moved = cal.date(byAdding: .day, value: days, to: cal.startOfDay(for: base)) else { return }
         selectedDay = cal.isDateInToday(moved) ? nil : moved
         refresh()
+    }
+
+    /// Loads which days of the shown month have events (for the dots in the month grid).
+    func loadMonth() {
+        updateAccess()
+        guard access == .granted, let interval = Calendar.current.dateInterval(of: .month, for: monthAnchor) else { eventDays = []; return }
+        let hidden = settings.hiddenCalendarIDs
+        let cal = Calendar.current
+        var days: Set<Date> = []
+        for e in store.events(matching: store.predicateForEvents(withStart: interval.start, end: interval.end, calendars: nil)) where !hidden.contains(e.calendar.calendarIdentifier) {
+            var d = cal.startOfDay(for: e.startDate)
+            let last = cal.startOfDay(for: max(e.startDate, e.endDate.addingTimeInterval(-1)))
+            while d <= last, d < interval.end { days.insert(d); guard let n = cal.date(byAdding: .day, value: 1, to: d) else { break }; d = n }
+        }
+        eventDays = days
+    }
+
+    func shiftMonth(_ months: Int) {
+        guard let moved = Calendar.current.date(byAdding: .month, value: months, to: monthAnchor) else { return }
+        monthAnchor = Calendar.current.dateInterval(of: .month, for: moved)?.start ?? moved
+        loadMonth()
+    }
+
+    func select(day: Date) {
+        let cal = Calendar.current
+        selectedDay = cal.isDateInToday(day) ? nil : cal.startOfDay(for: day)
+        refresh()
+    }
+
+    func showToday() {
+        monthAnchor = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+        resetDay()
+        loadMonth()
     }
 
     func resetDay() {

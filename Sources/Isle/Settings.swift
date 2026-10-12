@@ -207,9 +207,9 @@ final class Settings: ObservableObject {
         get { d.bool(forKey: SettingsKey.shortcutsEnabled) }
         set { set(newValue, SettingsKey.shortcutsEnabled) }
     }
-    var remindersEnabled: Bool {
-        get { d.bool(forKey: SettingsKey.remindersEnabled) }
-        set { set(newValue, SettingsKey.remindersEnabled) }
+    var calendarTabEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.calendarTabEnabled) }
+        set { set(newValue, SettingsKey.calendarTabEnabled) }
     }
     var mirrorEnabled: Bool {
         get { d.bool(forKey: SettingsKey.mirrorEnabled) }
@@ -233,7 +233,7 @@ final class Settings: ObservableObject {
         if toolsEnabled { s.insert(.tools) }
         if clipboardEnabled { s.insert(.clipboard) }
         if statsEnabled { s.insert(.stats) }
-        if remindersEnabled { s.insert(.reminders) }
+        if calendarTabEnabled { s.insert(.calendar) }
         if mirrorEnabled { s.insert(.mirror) }
         if scriptsEnabled { s.insert(.scripts) }
         if agentsEnabled { s.insert(.agents) }

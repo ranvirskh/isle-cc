@@ -144,7 +144,7 @@ struct ExpandedView: View {
                     case .shelf: ShelfView()
                     case .tools: ToolsView()
                     case .clipboard: ClipboardView()
-                    case .reminders: RemindersView()
+                    case .calendar: CalendarTabView()
                     case .mirror: MirrorView()
                     case .scripts: ScriptsView()
                     case .stats: StatsView()
@@ -216,7 +216,7 @@ struct TabButton: View {
         case .shelf: return "tray.fill"
         case .tools: return "wrench.and.screwdriver.fill"
         case .clipboard: return "doc.on.clipboard.fill"
-        case .reminders: return "checklist"
+        case .calendar: return "calendar"
         case .mirror: return "person.crop.circle.fill"
         case .scripts: return "terminal.fill"
         case .stats: return "gauge.with.dots.needle.33percent"
@@ -229,7 +229,7 @@ struct TabButton: View {
         case .shelf: return "Shelf & AirDrop"
         case .tools: return "Tools"
         case .clipboard: return "Clipboard"
-        case .reminders: return "Reminders"
+        case .calendar: return "Calendar"
         case .mirror: return "Mirror"
         case .scripts: return "Scripts"
         case .stats: return "System"

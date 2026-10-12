@@ -143,3 +143,59 @@ final class ScriptsAndUpdatesTests: XCTestCase {
         XCTAssertEqual(HUDState(kind: .keyboard, level: 0.4).title, "Keyboard backlight")
     }
 }
+
+final class CompletionRestoreTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_000_000)
+
+    func testRestoredTaskKeepsItsRealStart() {
+        var t = CompletionTracker(threshold: 120)
+        t.restore([.init(agent: "claudeCode", sessionID: "s", project: "p", startedAt: t0, lastActivity: t0.addingTimeInterval(100))], now: t0.addingTimeInterval(110))
+        let end = t0.addingTimeInterval(200)
+        let n = t.record(ActivityEvent(agent: .claudeCode, timestamp: end, sessionID: "s", project: "p", signal: .closed), now: end.addingTimeInterval(1))
+        XCTAssertEqual(n?.duration ?? 0, 200, accuracy: 0.001)
+    }
+
+    func testStaleRestoredTaskIsDropped() {
+        var t = CompletionTracker(threshold: 120)
+        t.restore([.init(agent: "claudeCode", sessionID: "s", project: nil, startedAt: t0, lastActivity: t0)], now: t0.addingTimeInterval(5_000))
+        XCTAssertTrue(t.openSessions().isEmpty)
+    }
+
+    func testOpenSessionsRoundTrip() {
+        var t = CompletionTracker(threshold: 120)
+        _ = t.record(ActivityEvent(agent: .claudeCode, timestamp: t0, sessionID: "s", project: "p", signal: .opened), now: t0)
+        let saved = t.openSessions()
+        XCTAssertEqual(saved.count, 1)
+        var u = CompletionTracker(threshold: 120)
+        u.restore(saved, now: t0.addingTimeInterval(10))
+        XCTAssertEqual(u.openSessions(), saved)
+    }
+}
+
+final class MonthGridTests: XCTestCase {
+    private var cal: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "UTC")!
+        c.firstWeekday = 1   // Sunday
+        return c
+    }
+
+    func testOctober2026Layout() {
+        let oct = cal.date(from: DateComponents(year: 2026, month: 10, day: 15))!
+        let weeks = MonthGrid.weeks(for: oct, calendar: cal)
+        // 1 Oct 2026 is a Thursday: 4 empty slots first; 31 days; 5 weeks.
+        XCTAssertEqual(weeks.count, 5)
+        XCTAssertEqual(weeks[0].prefix(4).compactMap { $0 }.count, 0)
+        XCTAssertEqual(cal.component(.day, from: weeks[0][4]!), 1)
+        XCTAssertEqual(weeks.flatMap { $0 }.compactMap { $0 }.count, 31)
+        XCTAssertTrue(weeks.allSatisfy { $0.count == 7 })
+    }
+
+    func testMondayFirstAndHeaders() {
+        var c = cal; c.firstWeekday = 2
+        let oct = c.date(from: DateComponents(year: 2026, month: 10, day: 1))!
+        XCTAssertEqual(c.component(.day, from: MonthGrid.weeks(for: oct, calendar: c)[0][3]!), 1)   // Thursday is the 4th column
+        XCTAssertEqual(MonthGrid.weekdayHeaders(calendar: c).count, 7)
+        XCTAssertEqual(MonthGrid.weekdayHeaders(calendar: c).first, "M")
+    }
+}

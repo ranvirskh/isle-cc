@@ -46,7 +46,7 @@ public enum SettingsKey {
     public static let externalDisplays = "externalDisplays"       // show the island on external displays, default false
     public static let hudReplacement = "hudReplacement"           // volume / brightness HUD in the island (needs Accessibility), default false
     public static let hudStepPercent = "hudStepPercent"           // percentage points per volume / brightness key press, default 6
-    public static let remindersEnabled = "remindersEnabled"       // Reminders tab, default false
+    public static let calendarTabEnabled = "calendarTabEnabled"   // Calendar tab (month grid and day agenda), default false
     public static let mirrorEnabled = "mirrorEnabled"             // Mirror (camera) tab, default false
     public static let scriptsEnabled = "scriptsEnabled"           // Scripts tab, default false
     public static let shelfEnabled = "shelfEnabled"               // Shelf & AirDrop tab, default true
@@ -104,7 +104,7 @@ public enum SettingsKey {
         externalDisplays: false,
         hudReplacement: false,
         hudStepPercent: HUDStep.defaultPercent,
-        remindersEnabled: false,
+        calendarTabEnabled: false,
         mirrorEnabled: false,
         scriptsEnabled: false,
         shelfEnabled: true,

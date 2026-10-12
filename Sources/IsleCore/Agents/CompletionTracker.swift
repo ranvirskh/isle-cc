@@ -116,6 +116,35 @@ public struct CompletionTracker {
         sessions.values.filter { $0.agent == agent }.map(\.lastActivity).max()
     }
 
+    /// A task that was running when the app last saved. Kept so that quitting or relaunching mid-task does not
+    /// make the task look as if it started at relaunch (which would hide the "finished" notice).
+    public struct OpenSession: Codable, Equatable {
+        public var agent: String
+        public var sessionID: String
+        public var project: String?
+        public var startedAt: Date
+        public var lastActivity: Date
+    }
+
+    public func openSessions() -> [OpenSession] {
+        sessions.values.compactMap { s in
+            guard s.isOpen, let started = s.startedAt else { return nil }
+            return OpenSession(agent: s.agent.rawValue, sessionID: s.sessionID, project: s.project, startedAt: started, lastActivity: s.lastActivity)
+        }
+    }
+
+    /// Re-opens saved tasks that were still recent. Tasks past the abandon / quiet timeout are dropped.
+    public mutating func restore(_ saved: [OpenSession], now: Date) {
+        for o in saved {
+            guard let agent = AgentKind(rawValue: o.agent) else { continue }
+            let limit = agent.hasExplicitTurnEnd ? abandonTimeout : quietTimeout + freshness
+            guard now.timeIntervalSince(o.lastActivity) < limit else { continue }
+            let k = key(agent, o.sessionID)
+            guard sessions[k] == nil else { continue }
+            sessions[k] = Session(agent: agent, sessionID: o.sessionID, project: o.project, startedAt: o.startedAt, lastActivity: o.lastActivity, isOpen: true)
+        }
+    }
+
     public var hasOpenSessions: Bool {
         sessions.values.contains { $0.isOpen }
     }

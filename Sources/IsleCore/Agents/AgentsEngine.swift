@@ -134,6 +134,8 @@ public final class AgentsEngine {
         var plans: [String: String] = [:]
         var lastActivity: [String: Date] = [:]
         var projects: [String: String] = [:]
+        /// Tasks running at the last save, so a relaunch keeps their real start time.
+        var openSessions: [CompletionTracker.OpenSession]?
     }
 
     public let roots: Roots
@@ -162,6 +164,7 @@ public final class AgentsEngine {
         self.calendar = calendar
         self.tracker = CompletionTracker(threshold: completionThreshold)
         loadState()
+        tracker.restore(state.openSessions ?? [], now: Date())
     }
 
     // MARK: Persistence
@@ -180,6 +183,7 @@ public final class AgentsEngine {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .secondsSince1970
         do {
+            state.openSessions = tracker.openSessions()
             try fileManager.createDirectory(at: stateFile.deletingLastPathComponent(), withIntermediateDirectories: true)
             try encoder.encode(state).write(to: stateFile, options: .atomic)
             dirty = false
