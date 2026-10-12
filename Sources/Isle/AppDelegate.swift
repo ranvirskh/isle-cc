@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var lockController: LockController!
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
+    private var welcomeWindow: NSWindow?
     private let args = CommandLine.arguments
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -37,6 +38,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         env.hotkeys.onToggle = { [weak island] in island?.toggleFromShortcut() }
         env.hotkeys.onTab = { [weak island] i in island?.showTab(index: i) }
         env.hotkeys.start()
+        env.hud.onLevel = { [weak island] s in island?.showHUD(s) }
+        env.hud.start()
+        env.updates.start()
+        if !env.settings.onboardingDone { DispatchQueue.main.async { [weak self] in self?.showWelcome() } }
         env.calendar.start()
         env.devices.start()
         env.agents.start()
@@ -81,6 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         env.agents.appWillTerminate()
         env.tools.appWillTerminate()
+        env.hud.appWillTerminate()
         env.media.stop()
     }
 
@@ -100,6 +106,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
+        let welcome = NSMenuItem(title: "Welcome Tour…", action: #selector(openWelcome), keyEquivalent: "")
+        welcome.target = self
+        menu.addItem(welcome)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Isle", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
@@ -109,6 +118,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func openSettings() { showSettings() }
     @objc private func quit() { NSApp.terminate(nil) }
+
+    @objc private func openWelcome() { showWelcome() }
+
+    func showWelcome() {
+        if let w = welcomeWindow { NSApp.activate(ignoringOtherApps: true); w.makeKeyAndOrderFront(nil); return }
+        let host = NSHostingController(rootView: OnboardingView { [weak self] in
+            self?.env.settings.onboardingDone = true
+            self?.welcomeWindow?.close()
+            self?.welcomeWindow = nil
+        })
+        env.settings.onboardingDone = true   // shown once, even if the window is closed with the red button
+        env.settings.onboardingDone = true   // shown once, even if the window is closed with the red button
+        let w = NSWindow(contentViewController: host)
+        w.title = "Welcome to Isle"
+        w.styleMask = [.titled, .closable]
+        w.isReleasedWhenClosed = false
+        w.center()
+        welcomeWindow = w
+        NSApp.activate(ignoringOtherApps: true)
+        w.makeKeyAndOrderFront(nil)
+    }
 
     func showSettings() {
         if let w = settingsWindow {

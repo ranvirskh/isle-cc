@@ -105,6 +105,9 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>NSAppleEventsUsageDescription</key><string>Isle reads the current track from Spotify and Music and sends play, pause, skip, seek and shuffle commands.</string>
   <key>NSLocationUsageDescription</key><string>Isle uses your location only to show the weather where you are.</string>
   <key>NSLocationWhenInUseUsageDescription</key><string>Isle uses your location only to show the weather where you are.</string>
+  <key>NSRemindersUsageDescription</key><string>Isle shows your open reminders in the island.</string>
+  <key>NSRemindersFullAccessUsageDescription</key><string>Isle shows your open reminders in the island and lets you tick them off.</string>
+  <key>NSCameraUsageDescription</key><string>Isle shows a camera preview in the Mirror tab. The camera is on only while that tab is open.</string>
   <key>NSBluetoothAlwaysUsageDescription</key><string>Isle shows a brief pop-up when a Bluetooth device connects.</string>
 </dict>
 </plist>
@@ -119,6 +122,7 @@ cat > build/Isle.entitlements <<EOF
   <key>com.apple.security.automation.apple-events</key><true/>
   <key>com.apple.security.personal-information.calendars</key><true/>
   <key>com.apple.security.device.bluetooth</key><true/>
+  <key>com.apple.security.device.camera</key><true/>
   <key>com.apple.security.personal-information.location</key><true/>
 </dict>
 </plist>

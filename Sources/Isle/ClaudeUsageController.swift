@@ -24,8 +24,9 @@ final class ClaudeUsageController: ObservableObject {
     private let settings = Settings.shared
     private var timer: Timer?
     private var inFlight = false
+    private var backoffUntil = Date.distantPast
     private var lastFetch = Date.distantPast
-    private static let interval: TimeInterval = 300
+    nonisolated private static let interval: TimeInterval = 300
 
     func start() {
         let ws = NSWorkspace.shared.notificationCenter
@@ -54,6 +55,7 @@ final class ClaudeUsageController: ObservableObject {
     private func sync() {
         timer?.invalidate()
         timer = nil
+        backoffUntil = .distantPast
         guard settings.claudeUsage else { windows = []; failed = false; return }
         refresh()
         let t = Timer(timeInterval: Self.interval, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
@@ -72,23 +74,29 @@ final class ClaudeUsageController: ObservableObject {
         // No point asking while nobody can see the result, and back off in Low Power Mode.
         guard settings.claudeUsage, !inFlight, CGDisplayIsAsleep(CGMainDisplayID()) == 0 else { return }
         if ProcessInfo.processInfo.isLowPowerModeEnabled, Date().timeIntervalSince(lastFetch) < Self.interval * 2 { return }
+        guard Date() >= backoffUntil else { return }
         inFlight = true
         lastFetch = Date()
-        DispatchQueue.global(qos: .utility).async {
-            let result = Self.fetch()
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated { [weak self] in
-                    guard let self else { return }
-                    self.inFlight = false
-                    if let result {
-                        self.windows = result
-                        self.failed = false
-                        self.bridge(result)
-                    } else {
-                        // Keep the last good reading; it is dropped from view once its reset time passes.
-                        self.failed = true
-                    }
-                }
+        Task { [weak self] in
+            let outcome = await Self.fetch()
+            guard let self else { return }
+            self.inFlight = false
+            switch outcome {
+            case .ok(let result):
+                self.windows = result
+                self.failed = false
+                self.backoffUntil = .distantPast
+                self.bridge(result)
+            case .rateLimited(let wait):
+                self.failed = true
+                self.backoffUntil = Date().addingTimeInterval(wait)
+            case .unauthorized, .noToken:
+                // The token is expired or missing: retrying every few minutes only wastes energy until Claude Code signs in again.
+                self.failed = true
+                self.backoffUntil = Date().addingTimeInterval(Self.interval * 3)
+            case .failed:
+                // Keep the last good reading; it is dropped from view once its reset time passes.
+                self.failed = true
             }
         }
     }
@@ -96,42 +104,72 @@ final class ClaudeUsageController: ObservableObject {
     /// Also feeds the Agents tab, which reads limits from this file.
     private func bridge(_ windows: [LimitWindow]) {
         let url = Paths.support.appendingPathComponent("Agents/claude-limits.json")
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let data = ClaudeStatusline.encodeBridgeFile(windows: windows, now: Date()) { try? data.write(to: url, options: .atomic) }
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if let data = ClaudeStatusline.encodeBridgeFile(windows: windows, now: Date()) { try data.write(to: url, options: .atomic) }
+        } catch {
+            Log.write("usage: could not write the limits bridge file: \(error.localizedDescription)")
+        }
     }
 
-    nonisolated private static func fetch() -> [LimitWindow]? {
-        guard let token = readToken() else { Log.write("usage: no Claude Code token in the Keychain"); return nil }
+    private enum FetchOutcome {
+        case ok([LimitWindow])
+        case noToken
+        case unauthorized
+        case rateLimited(TimeInterval)
+        case failed
+    }
+
+    nonisolated private static func fetch() async -> FetchOutcome {
+        guard let token = await readToken() else { Log.write("usage: no Claude Code token in the Keychain"); return .noToken }
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!, timeoutInterval: 15)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
         request.setValue("Isle", forHTTPHeaderField: "User-Agent")
-        let sem = DispatchSemaphore(value: 0)
-        var body: Data?
-        var status = 0
-        URLSession.shared.dataTask(with: request) { data, response, _ in
-            body = data
-            status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            sem.signal()
-        }.resume()
-        sem.wait()
-        guard status == 200, let body, let windows = ClaudeUsage.parse(body, now: Date()) else {
-            Log.write("usage: request failed (HTTP \(status))")
-            return nil
+        do {
+            let (body, response) = try await URLSession.shared.data(for: request)
+            let http = response as? HTTPURLResponse
+            switch http?.statusCode ?? 0 {
+            case 200:
+                if let windows = ClaudeUsage.parse(body, now: Date()) { return .ok(windows) }
+                Log.write("usage: unexpected response format")
+                return .failed
+            case 401, 403:
+                Log.write("usage: token rejected (HTTP \(http?.statusCode ?? 0))")
+                return .unauthorized
+            case 429:
+                let wait = http?.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init) ?? interval * 2
+                Log.write("usage: rate limited, backing off \(Int(wait)) s")
+                return .rateLimited(min(max(wait, interval), 3600))
+            default:
+                Log.write("usage: request failed (HTTP \(http?.statusCode ?? 0))")
+                return .failed
+            }
+        } catch {
+            Log.write("usage: request error: \(error.localizedDescription)")
+            return .failed
         }
-        return windows
     }
 
-    nonisolated private static func readToken() -> String? {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        p.arguments = ["find-generic-password", "-s", "Claude Code-credentials", "-w"]
-        let out = Pipe()
-        p.standardOutput = out
-        p.standardError = FileHandle.nullDevice
-        guard (try? p.run()) != nil else { return nil }
-        let data = out.fileHandleForReading.readDataToEndOfFile()
-        p.waitUntilExit()
-        return p.terminationStatus == 0 ? ClaudeUsage.accessToken(fromCredentials: data) : nil
+    /// Runs `security` off the main thread. If the Keychain prompt is left open, the process is ended after 20 s so
+    /// the read cannot hang forever.
+    nonisolated private static func readToken() async -> String? {
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .utility).async {
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+                p.arguments = ["find-generic-password", "-s", "Claude Code-credentials", "-w"]
+                let out = Pipe()
+                p.standardOutput = out
+                p.standardError = FileHandle.nullDevice
+                guard (try? p.run()) != nil else { cont.resume(returning: nil); return }
+                let killer = DispatchWorkItem { if p.isRunning { p.terminate() } }
+                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 20, execute: killer)
+                let data = out.fileHandleForReading.readDataToEndOfFile()
+                p.waitUntilExit()
+                killer.cancel()
+                cont.resume(returning: p.terminationStatus == 0 ? ClaudeUsage.accessToken(fromCredentials: data) : nil)
+            }
+        }
     }
 }

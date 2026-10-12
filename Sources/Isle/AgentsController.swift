@@ -27,7 +27,7 @@ final class AgentsController: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self, let key = n.object as? String else { return }
                 switch key {
-                case SettingsKey.agentsEnabled: self.sync()
+                case SettingsKey.agentsEnabled, SettingsKey.agentNoticeEnabled: self.sync()
                 case SettingsKey.agentsHidden: self.publish()
                 case SettingsKey.agentNoticeMinutes:
                     let minutes = self.settings.agentNoticeMinutes
@@ -40,7 +40,8 @@ final class AgentsController: ObservableObject {
     }
 
     private func sync() {
-        if settings.agentsEnabled { begin() } else { end() }
+        // The "task finished" pop-up works without the AI agents tab: the local scan runs while either is on.
+        if settings.agentsEnabled || settings.agentNoticeEnabled { begin() } else { end() }
     }
 
     private func begin() {

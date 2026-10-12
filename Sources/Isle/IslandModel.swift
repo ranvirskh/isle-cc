@@ -7,14 +7,16 @@ import IsleCore
 final class IslandModel: ObservableObject {
     @Published var phase: IslandStateMachine.Phase = .collapsed
     @Published var tab: IslandTab = .home
+    /// Cursor position over the open island, -1...1 on each axis (0 when parallax is off).
+    @Published var parallax = CGSize.zero
+    /// Tabs shown in the header, in the user's order. Controllers refresh it when settings change.
+    @Published var visibleTabs: [IslandTab] = [.home, .shelf]
     @Published var screen: ScreenInfo
     @Published var popup: PopupItem?
     /// A drag from another app is heading for the notch: show the AirDrop / Shelf drop targets.
     @Published var externalDrag = false
-    @Published var agentsEnabled = false
-    @Published var toolsEnabled = false
-    @Published var clipboardEnabled = false
-    @Published var statsEnabled = false
+    /// Latest volume / brightness level shown by the HUD pop-up.
+    @Published var hud = HUDState(kind: .volume, level: 0)
     /// Drives the content fade, which trails the shape on the way in and leads it on the way out.
     @Published var contentVisible = false
     /// Music is playing: the collapsed island widens to show the cover (left) and an equalizer (right).
@@ -88,7 +90,6 @@ final class IslandModel: ObservableObject {
         return CGSize(width: w, height: h)
     }
 
-    var visibleTabs: [IslandTab] { IslandTab.visible(agents: agentsEnabled, clipboard: clipboardEnabled, stats: statsEnabled, tools: toolsEnabled) }
 
     var isNotched: Bool { screen.hasNotch }
 }
@@ -120,6 +121,11 @@ final class AppEnv: ObservableObject {
     let clipboard = ClipboardController()
     let stats = StatsController()
     let hotkeys = HotkeyController()
+    let reminders = RemindersController()
+    let mirror = MirrorController()
+    let scripts = ScriptsController()
+    let updates = UpdateChecker()
+    let hud = HUDController()
     let settings = Settings.shared
     var island: IslandController!
     var lock: LockController?

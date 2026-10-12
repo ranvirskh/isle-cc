@@ -24,9 +24,12 @@ final class StatsController: ObservableObject {
         guard timer == nil else { return }
         lastTicks = Self.readTicks(); lastNet = Self.readNet(); lastNetDate = Date()
         sample()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        // Low Power Mode: sample every 2 s. The tolerance lets macOS batch the wake-up with other timers.
+        let t = Timer.scheduledTimer(withTimeInterval: ProcessInfo.processInfo.isLowPowerModeEnabled ? 2 : 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.sample() }
         }
+        t.tolerance = 0.25
+        timer = t
     }
 
     func stop() { timer?.invalidate(); timer = nil; lastTicks = nil; lastNet = nil }

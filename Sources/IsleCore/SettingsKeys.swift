@@ -44,6 +44,18 @@ public enum SettingsKey {
     public static let liveActivity = "liveActivity"               // cover + equalizer beside the notch while playing, default true
     public static let songBanner = "songBanner"                   // default true
     public static let externalDisplays = "externalDisplays"       // show the island on external displays, default false
+    public static let hudReplacement = "hudReplacement"           // volume / brightness HUD in the island (needs Accessibility), default false
+    public static let hudStepPercent = "hudStepPercent"           // percentage points per volume / brightness key press, default 6
+    public static let remindersEnabled = "remindersEnabled"       // Reminders tab, default false
+    public static let mirrorEnabled = "mirrorEnabled"             // Mirror (camera) tab, default false
+    public static let scriptsEnabled = "scriptsEnabled"           // Scripts tab, default false
+    public static let shelfEnabled = "shelfEnabled"               // Shelf & AirDrop tab, default true
+    public static let tabOrder = "tabOrder"                       // [IslandTab.rawValue], empty = built-in order
+    public static let scripts = "scripts"                         // [[name, command]] saved shell commands
+    public static let hudMicrophone = "hudMicrophone"             // show the microphone level when it changes, default true
+    public static let parallaxHover = "parallaxHover"             // content shifts slightly with the cursor, default false
+    public static let autoUpdateCheck = "autoUpdateCheck"         // ask GitHub for a newer release once a day, default false
+    public static let onboardingDone = "onboardingDone"           // first-run welcome shown
     public static let toolsEnabled = "toolsEnabled"               // Tools tab (Keep Awake), default false
     public static let clipboardEnabled = "clipboardEnabled"       // Clipboard tab, memory only, default false
     public static let statsEnabled = "statsEnabled"               // System tab (CPU, memory, network, disk), default false
@@ -90,6 +102,18 @@ public enum SettingsKey {
         liveActivity: true,
         songBanner: true,
         externalDisplays: false,
+        hudReplacement: false,
+        hudStepPercent: HUDStep.defaultPercent,
+        remindersEnabled: false,
+        mirrorEnabled: false,
+        scriptsEnabled: false,
+        shelfEnabled: true,
+        tabOrder: [String](),
+        scripts: [[String]](),
+        hudMicrophone: true,
+        parallaxHover: false,
+        autoUpdateCheck: false,
+        onboardingDone: false,
         toolsEnabled: false,
         clipboardEnabled: false,
         statsEnabled: false,

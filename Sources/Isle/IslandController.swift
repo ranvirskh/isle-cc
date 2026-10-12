@@ -50,10 +50,7 @@ final class IslandController {
     // MARK: Setup
 
     func start() {
-        model.agentsEnabled = settings.agentsEnabled
-        model.toolsEnabled = settings.toolsEnabled
-        model.clipboardEnabled = settings.clipboardEnabled
-        model.statsEnabled = settings.statsEnabled
+        model.visibleTabs = settings.visibleTabs
         model.theme = settings.theme
         applySettings()
         let panel = IslandPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -72,7 +69,7 @@ final class IslandController {
 
         let root = IslandRootView().environmentObject(env.weather).environmentObject(model).environmentObject(env).environmentObject(env.media)
             .environmentObject(env.calendar).environmentObject(env.devices).environmentObject(env.agents).environmentObject(env.usage)
-            .environmentObject(env.shelf).environmentObject(env.tools).environmentObject(env.clipboard).environmentObject(env.stats).environmentObject(settings)
+            .environmentObject(env.shelf).environmentObject(env.tools).environmentObject(env.clipboard).environmentObject(env.reminders).environmentObject(env.mirror).environmentObject(env.scripts).environmentObject(env.stats).environmentObject(settings)
         hosting = NSHostingView(rootView: AnyView(root))
         hosting.sizingOptions = []
         hosting.wantsLayer = true
@@ -92,7 +89,9 @@ final class IslandController {
                 self?.updateLive()
                 if let k = n.object as? String, k == SettingsKey.displayChoice || k == SettingsKey.externalDisplays { self?.screensChanged(force: true) }
                 switch n.object as? String {
-                case SettingsKey.agentsEnabled, SettingsKey.toolsEnabled, SettingsKey.clipboardEnabled, SettingsKey.statsEnabled: self?.agentsToggled()
+                case SettingsKey.agentsEnabled, SettingsKey.toolsEnabled, SettingsKey.clipboardEnabled, SettingsKey.statsEnabled,
+                     SettingsKey.remindersEnabled, SettingsKey.mirrorEnabled, SettingsKey.scriptsEnabled, SettingsKey.shelfEnabled, SettingsKey.tabOrder:
+                    self?.agentsToggled()
                 default: break
                 }
             }
@@ -180,10 +179,7 @@ final class IslandController {
     }
 
     private func agentsToggled() {
-        model.agentsEnabled = settings.agentsEnabled
-        model.toolsEnabled = settings.toolsEnabled
-        model.clipboardEnabled = settings.clipboardEnabled
-        model.statsEnabled = settings.statsEnabled
+        model.visibleTabs = settings.visibleTabs
         if !model.visibleTabs.contains(model.tab) { model.tab = .home }
         positionWindow()
     }
@@ -236,6 +232,10 @@ final class IslandController {
 
     // MARK: Mouse
 
+    private static let mouseUpdateGap: CFTimeInterval = 1.0 / 30
+    private var lastMouseUpdate: CFTimeInterval = 0
+    private var trailingMouseUpdate: DispatchWorkItem?
+
     private func installMonitors() {
         let moveMask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .rightMouseDragged]
         if let m = NSEvent.addGlobalMonitorForEvents(matching: moveMask, handler: { [weak self] e in
@@ -263,7 +263,26 @@ final class IslandController {
 
     private func mouseEvent(_ e: NSEvent) {
         if e.type == .leftMouseDragged || e.type == .rightMouseDragged { dragMoved() }
-        updateMouse()
+        // A trackpad can report 120 moves a second. Hover only needs about 30, so extra moves are merged into one
+        // trailing update that still sees the final cursor position.
+        let now = CACurrentMediaTime()
+        if now - lastMouseUpdate >= Self.mouseUpdateGap {
+            lastMouseUpdate = now
+            trailingMouseUpdate?.cancel()
+            trailingMouseUpdate = nil
+            updateMouse()
+        } else if trailingMouseUpdate == nil {
+            let work = DispatchWorkItem { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.trailingMouseUpdate = nil
+                    self.lastMouseUpdate = CACurrentMediaTime()
+                    self.updateMouse()
+                }
+            }
+            trailingMouseUpdate = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.mouseUpdateGap, execute: work)
+        }
     }
 
     private func hoverRegion() -> CGRect {
@@ -286,12 +305,24 @@ final class IslandController {
             screensChanged(force: true)
         }
         let inside = hoverRegion().contains(p)
+        updateParallax(p)
         if inside != hoveredFlag {
             hoveredFlag = inside
             handle(inside ? .mouseEntered : .mouseExited)
         }
         let accept = inside || machine.isDragging
         if panel.ignoresMouseEvents == accept { panel.ignoresMouseEvents = !accept }
+    }
+
+    private func updateParallax(_ p: CGPoint) {
+        var target = CGSize.zero
+        if settings.parallaxHover, machine.phase == .expanded {
+            let r = NotchGeometry.topAnchoredFrame(model.screen, size: model.shapeSize)
+            target = CGSize(width: min(1, max(-1, (p.x - r.midX) / max(1, r.width / 2))),
+                            height: min(1, max(-1, (r.midY - p.y) / max(1, r.height / 2))))
+        }
+        guard abs(target.width - model.parallax.width) > 0.02 || abs(target.height - model.parallax.height) > 0.02 else { return }
+        withAnimation(.easeOut(duration: 0.18)) { model.parallax = target }
     }
 
     private func localMouseDown(_ e: NSEvent) {
@@ -417,6 +448,25 @@ final class IslandController {
         guard tabs.indices.contains(index) else { return }
         if machine.phase != .expanded { handle(.forceExpand) }
         setTab(tabs[index])
+    }
+
+    /// Volume / brightness indicator. Key repeats only update the level and restart the timer; a HUD never queues behind other pop-ups.
+    func showHUD(_ hud: HUDState) {
+        model.hud = hud
+        let duration = Motion.scaled(1.6)
+        if machine.phase == .popup, model.popup?.kind == .hud {
+            popupTimer?.invalidate()
+            popupTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.handle(.popupTimerFired) }
+            }
+            return
+        }
+        guard machine.canPresentPopup else { return }
+        popupClearWork?.cancel()
+        model.popup = PopupItem(id: "hud", kind: .hud, symbol: hud.symbol, title: hud.title)
+        machine.popupDuration = duration
+        handle(.popupRequested)
+        if machine.phase != .popup { model.popup = nil }
     }
 
     func setTab(_ tab: IslandTab) {

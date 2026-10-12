@@ -163,6 +163,34 @@ final class Settings: ObservableObject {
         get { d.bool(forKey: SettingsKey.externalDisplays) }
         set { set(newValue, SettingsKey.externalDisplays) }
     }
+    var hudReplacement: Bool {
+        get { d.bool(forKey: SettingsKey.hudReplacement) }
+        set { set(newValue, SettingsKey.hudReplacement) }
+    }
+    var hudStepPercent: Double {
+        get { min(HUDStep.percentRange.upperBound, max(HUDStep.percentRange.lowerBound, d.double(forKey: SettingsKey.hudStepPercent))) }
+        set { set(newValue, SettingsKey.hudStepPercent) }
+    }
+    var hudMicrophone: Bool {
+        get { d.bool(forKey: SettingsKey.hudMicrophone) }
+        set { set(newValue, SettingsKey.hudMicrophone) }
+    }
+    var parallaxHover: Bool {
+        get { d.bool(forKey: SettingsKey.parallaxHover) }
+        set { set(newValue, SettingsKey.parallaxHover) }
+    }
+    var autoUpdateCheck: Bool {
+        get { d.bool(forKey: SettingsKey.autoUpdateCheck) }
+        set { set(newValue, SettingsKey.autoUpdateCheck) }
+    }
+    var onboardingDone: Bool {
+        get { d.bool(forKey: SettingsKey.onboardingDone) }
+        set { set(newValue, SettingsKey.onboardingDone) }
+    }
+    var scripts: [[String]] {
+        get { (d.array(forKey: SettingsKey.scripts) as? [[String]]) ?? [] }
+        set { set(newValue, SettingsKey.scripts) }
+    }
     var toolsEnabled: Bool {
         get { d.bool(forKey: SettingsKey.toolsEnabled) }
         set { set(newValue, SettingsKey.toolsEnabled) }
@@ -179,7 +207,39 @@ final class Settings: ObservableObject {
         get { d.bool(forKey: SettingsKey.shortcutsEnabled) }
         set { set(newValue, SettingsKey.shortcutsEnabled) }
     }
-    var visibleTabs: [IslandTab] { IslandTab.visible(agents: agentsEnabled, clipboard: clipboardEnabled, stats: statsEnabled, tools: toolsEnabled) }
+    var remindersEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.remindersEnabled) }
+        set { set(newValue, SettingsKey.remindersEnabled) }
+    }
+    var mirrorEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.mirrorEnabled) }
+        set { set(newValue, SettingsKey.mirrorEnabled) }
+    }
+    var scriptsEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.scriptsEnabled) }
+        set { set(newValue, SettingsKey.scriptsEnabled) }
+    }
+    var shelfEnabled: Bool {
+        get { d.bool(forKey: SettingsKey.shelfEnabled) }
+        set { set(newValue, SettingsKey.shelfEnabled) }
+    }
+    var tabOrder: [IslandTab] {
+        get { (d.stringArray(forKey: SettingsKey.tabOrder) ?? []).compactMap(IslandTab.init(rawValue:)) }
+        set { set(newValue.map(\.rawValue), SettingsKey.tabOrder) }
+    }
+    var enabledTabs: Set<IslandTab> {
+        var s: Set<IslandTab> = [.home]
+        if shelfEnabled { s.insert(.shelf) }
+        if toolsEnabled { s.insert(.tools) }
+        if clipboardEnabled { s.insert(.clipboard) }
+        if statsEnabled { s.insert(.stats) }
+        if remindersEnabled { s.insert(.reminders) }
+        if mirrorEnabled { s.insert(.mirror) }
+        if scriptsEnabled { s.insert(.scripts) }
+        if agentsEnabled { s.insert(.agents) }
+        return s
+    }
+    var visibleTabs: [IslandTab] { IslandTab.visible(enabled: enabledTabs, order: tabOrder) }
     var chargingIndicator: ChargingIndicatorMode {
         get { ChargingIndicatorMode(rawValue: d.string(forKey: SettingsKey.chargingIndicator) ?? "") ?? .whileCharging }
         set { set(newValue.rawValue, SettingsKey.chargingIndicator) }

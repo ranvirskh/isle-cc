@@ -2,7 +2,7 @@
 
 ## Get going
     git clone https://github.com/ranvirskh/isle-cc.git && cd isle-cc     # or just `cd ~/isle-cc`
-    ./build.sh --test      # 240 unit tests, about a second
+    ./build.sh --test      # 259 unit tests, about a second
     ./build.sh --install   # build, copy to /Applications, relaunch
     ./build.sh --debug     # faster build into build/Isle.app (run it with flags, see README)
 

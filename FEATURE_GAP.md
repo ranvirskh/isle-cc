@@ -10,7 +10,8 @@ song-change tab, per-animation options.
 ## Status after you chose
 
 Built: charging live activity (5 s), downloads live activity, weather (device location or typed city), Minimalistic and
-Frutiger Aero themes, lock screen widgets (weather, charging, Bluetooth batteries). Not chosen and not built: everything else in the table.
+Frutiger Aero themes, lock screen widgets (weather, charging, Bluetooth batteries), clipboard history (#1), system stats
+without temperature (#2), keep awake (#6), global shortcuts (#12). Not built: everything else in the table.
 
 ## Missing features
 

@@ -40,7 +40,7 @@ final class PrivacyMonitor: ObservableObject {
 
     private func startTimer() {
         guard screenTimer == nil else { return }
-        let t = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+        let t = Timer.scheduledTimer(withTimeInterval: ProcessInfo.processInfo.isLowPowerModeEnabled ? 6 : 3, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
         t.tolerance = 1.5   // lets macOS batch the wake-up with other timers

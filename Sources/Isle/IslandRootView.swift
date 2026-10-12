@@ -144,11 +144,15 @@ struct ExpandedView: View {
                     case .shelf: ShelfView()
                     case .tools: ToolsView()
                     case .clipboard: ClipboardView()
+                    case .reminders: RemindersView()
+                    case .mirror: MirrorView()
+                    case .scripts: ScriptsView()
                     case .stats: StatsView()
                     case .agents: AgentsView()
                     }
                 }
             }
+            .offset(x: model.parallax.width * 5, y: model.parallax.height * 3)
             .id(model.showingDropTargets ? "drop" : model.tab.rawValue)
             .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: Motion.tabSlideDistance)), removal: .opacity))
             .padding(.horizontal, flare + 16)
@@ -212,6 +216,9 @@ struct TabButton: View {
         case .shelf: return "tray.fill"
         case .tools: return "wrench.and.screwdriver.fill"
         case .clipboard: return "doc.on.clipboard.fill"
+        case .reminders: return "checklist"
+        case .mirror: return "person.crop.circle.fill"
+        case .scripts: return "terminal.fill"
         case .stats: return "gauge.with.dots.needle.33percent"
         case .agents: return "sparkles"
         }
@@ -222,6 +229,9 @@ struct TabButton: View {
         case .shelf: return "Shelf & AirDrop"
         case .tools: return "Tools"
         case .clipboard: return "Clipboard"
+        case .reminders: return "Reminders"
+        case .mirror: return "Mirror"
+        case .scripts: return "Scripts"
         case .stats: return "System"
         case .agents: return "AI agents"
         }
@@ -321,6 +331,8 @@ struct PopupView: View {
         let item = model.popup
         if let item, item.kind == .nowPlaying {
             NowPlayingBanner(item: item).id(item.id)
+        } else if item?.kind == .hud {
+            HUDBar(flare: flare)
         } else {
         HStack(spacing: 14) {
             if let item {
@@ -643,5 +655,43 @@ struct UsageAlertView: View {
             }
             .lineLimit(1).fixedSize()
         }
+    }
+}
+
+/// Volume / brightness indicator: icon, name and a level bar, updated live while keys repeat.
+struct HUDBar: View {
+    @EnvironmentObject var model: IslandModel
+    let flare: CGFloat
+
+    var body: some View {
+        let hud = model.hud
+        HStack(spacing: 14) {
+            Image(systemName: hud.symbol)
+                .font(.system(size: 26))
+                .symbolRenderingMode(.hierarchical)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 40)
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    Text(hud.title).font(.system(size: 13, weight: .semibold))
+                    Spacer()
+                    Text(hud.muted ? "Muted" : "\(Int((hud.level * 100).rounded()))%")
+                        .font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(.white.opacity(0.65))
+                }
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.18))
+                        Capsule().fill(Color.white).frame(width: max(6, g.size.width * hud.shownLevel))
+                    }
+                }
+                .frame(height: 6)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: hud)
+        .padding(.horizontal, flare + 18)
+        .padding(.top, model.isNotched ? model.collapsedSize.height + 2 : 10)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(.white)
     }
 }

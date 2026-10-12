@@ -24,19 +24,14 @@ public struct ScreenInfo: Equatable {
 }
 
 public enum IslandTab: String, CaseIterable, Codable {
-    case home, shelf, tools, clipboard, stats, agents
+    case home, shelf, tools, clipboard, stats, reminders, mirror, scripts, agents
 
-    /// Tabs shown in the header; Tools, Clipboard, System and AI agents are opt-in.
-    public static func visible(agents: Bool, clipboard: Bool, stats: Bool, tools: Bool) -> [IslandTab] {
-        allCases.filter { t in
-            switch t {
-            case .agents: return agents
-            case .clipboard: return clipboard
-            case .stats: return stats
-            case .tools: return tools
-            default: return true
-            }
-        }
+    /// Tabs shown in the header: Home always, then the enabled tabs in the user's order. Tabs missing from `order`
+    /// (new ones, or an empty list) follow in their built-in order.
+    public static func visible(enabled: Set<IslandTab>, order: [IslandTab] = []) -> [IslandTab] {
+        let wanted = allCases.filter { $0 == .home || enabled.contains($0) }
+        let rank: (IslandTab) -> Int = { t in order.firstIndex(of: t) ?? (order.count + (allCases.firstIndex(of: t) ?? 0)) }
+        return wanted.sorted { $0 == .home ? $1 != .home : ($1 == .home ? false : rank($0) < rank($1)) }
     }
 }
 
@@ -76,7 +71,7 @@ public enum NotchGeometry {
         switch tab {
         case .home: base = CGSize(width: 700, height: 208)
         case .shelf: base = CGSize(width: 700, height: 208)
-        case .tools, .clipboard, .stats: base = CGSize(width: 700, height: 208)
+        case .tools, .clipboard, .stats, .reminders, .mirror, .scripts: base = CGSize(width: 700, height: 208)
         case .agents: base = CGSize(width: 700, height: 236)
         }
         let collapsed = collapsedSize(s)

@@ -22,10 +22,10 @@ final class ClipboardController: ObservableObject {
         timer?.invalidate(); timer = nil
         guard settings.clipboardEnabled else { history.clear(); return }
         lastChange = NSPasteboard.general.changeCount
-        timer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.poll() }
         }
-        timer?.tolerance = 0.3
+        timer?.tolerance = 0.5
     }
 
     private func poll() {
