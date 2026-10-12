@@ -66,6 +66,19 @@ final class RemindersController: ObservableObject {
         }
     }
 
+    /// Adds a reminder to the default Reminders list. Returns false when there is no access or the save failed.
+    @discardableResult
+    func add(title: String) -> Bool {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard access == .granted, !trimmed.isEmpty, let list = store.defaultCalendarForNewReminders() else { return false }
+        let r = EKReminder(eventStore: store)
+        r.title = trimmed
+        r.calendar = list
+        do { try store.save(r, commit: true) } catch { Log.write("reminders: \(error.localizedDescription)"); return false }
+        refresh()
+        return true
+    }
+
     func complete(_ item: Item) {
         guard let r = store.calendarItem(withIdentifier: item.id) as? EKReminder else { return }
         r.isCompleted = true

@@ -483,6 +483,9 @@ final class IslandController {
         panel.makeKey()
     }
 
+    /// Gives the keyboard back once the Shelf-style typing is over.
+    func releaseKey() { updateKeyability() }
+
     private func updateKeyability() {
         if machine.phase != .expanded || model.tab != .shelf {
             if panel.allowKey { panel.allowKey = false; if panel.isKeyWindow { panel.resignKey() } }
