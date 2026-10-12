@@ -199,3 +199,19 @@ final class MonthGridTests: XCTestCase {
         XCTAssertEqual(MonthGrid.weekdayHeaders(calendar: c).first, "M")
     }
 }
+
+final class ReminderListsTests: XCTestCase {
+    func testPicksTheBusiestList() {
+        XCTAssertEqual(ReminderLists.pick(counts: ["a": 2, "b": 9, "c": 4], preferred: "a"), "b")
+    }
+
+    func testTiePrefersTheDefaultThenIsStable() {
+        XCTAssertEqual(ReminderLists.pick(counts: ["a": 3, "b": 3, "c": 1], preferred: "b"), "b")
+        XCTAssertEqual(ReminderLists.pick(counts: ["z": 3, "b": 3], preferred: "q"), "b")
+        XCTAssertEqual(ReminderLists.pick(counts: ["a": 0, "b": 0], preferred: nil), "a")
+    }
+
+    func testNoListsGivesNil() {
+        XCTAssertNil(ReminderLists.pick(counts: [:], preferred: "a"))
+    }
+}

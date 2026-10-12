@@ -15,6 +15,8 @@ final class RemindersController: ObservableObject {
 
     @Published private(set) var items: [Item] = []
     @Published private(set) var access: Access = .unknown
+    /// Open reminders per list (calendar identifier), from the last fetch of everything, not just the 30 shown.
+    private var openCounts: [String: Int] = [:]
     private let store = EKEventStore()
     private var observer: NSObjectProtocol?
 
@@ -50,6 +52,8 @@ final class RemindersController: ObservableObject {
     func refresh() {
         let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
         store.fetchReminders(matching: predicate) { [weak self] reminders in
+            var counts: [String: Int] = [:]
+            for r in reminders ?? [] { if let id = r.calendar?.calendarIdentifier { counts[id, default: 0] += 1 } }
             let mapped = (reminders ?? []).map { r in
                 Item(id: r.calendarItemIdentifier, title: r.title ?? "Untitled",
                      due: r.dueDateComponents.flatMap { Calendar.current.date(from: $0) }, list: r.calendar?.title ?? "")
@@ -62,15 +66,27 @@ final class RemindersController: ObservableObject {
                 default: return a.title < b.title
                 }
             }
-            DispatchQueue.main.async { MainActor.assumeIsolated { self?.items = Array(sorted.prefix(30)) } }
+            DispatchQueue.main.async { MainActor.assumeIsolated {
+                self?.openCounts = counts
+                self?.items = Array(sorted.prefix(30))
+            } }
         }
     }
 
-    /// Adds a reminder to the default Reminders list. Returns false when there is no access or the save failed.
+    /// The writable list holding the most open reminders; the system default list when counts are not known yet.
+    private func busiestList() -> EKCalendar? {
+        let writable = store.calendars(for: .reminder).filter(\.allowsContentModifications)
+        let counts = Dictionary(uniqueKeysWithValues: writable.map { ($0.calendarIdentifier, openCounts[$0.calendarIdentifier] ?? 0) })
+        let preferred = store.defaultCalendarForNewReminders()?.calendarIdentifier
+        guard let id = ReminderLists.pick(counts: counts, preferred: preferred) else { return store.defaultCalendarForNewReminders() }
+        return writable.first { $0.calendarIdentifier == id }
+    }
+
+    /// Adds a reminder to the list with the most open reminders. Returns false when there is no access or the save failed.
     @discardableResult
     func add(title: String) -> Bool {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard access == .granted, !trimmed.isEmpty, let list = store.defaultCalendarForNewReminders() else { return false }
+        guard access == .granted, !trimmed.isEmpty, let list = busiestList() else { return false }
         let r = EKReminder(eventStore: store)
         r.title = trimmed
         r.calendar = list
