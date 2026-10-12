@@ -121,6 +121,7 @@ final class AppEnv: ObservableObject {
     let clipboard = ClipboardController()
     let stats = StatsController()
     let hotkeys = HotkeyController()
+    let reminders = RemindersController()
     let mirror = MirrorController()
     let scripts = ScriptsController()
     let updates = UpdateChecker()

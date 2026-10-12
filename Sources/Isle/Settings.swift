@@ -191,6 +191,10 @@ final class Settings: ObservableObject {
         get { (d.array(forKey: SettingsKey.scripts) as? [[String]]) ?? [] }
         set { set(newValue, SettingsKey.scripts) }
     }
+    var showReminders: Bool {
+        get { d.bool(forKey: SettingsKey.showReminders) }
+        set { set(newValue, SettingsKey.showReminders) }
+    }
     var toolsEnabled: Bool {
         get { d.bool(forKey: SettingsKey.toolsEnabled) }
         set { set(newValue, SettingsKey.toolsEnabled) }

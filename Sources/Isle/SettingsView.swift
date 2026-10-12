@@ -183,7 +183,8 @@ struct SettingsView: View {
             }
 
             Section("Calendar") {
-                Toggle("Show today's agenda", isOn: binding({ settings.showCalendar }, { settings.showCalendar = $0 }))
+                Toggle("Show reminders on Home (open Apple Reminders, tick them off; asks for Reminders access)", isOn: binding({ settings.showReminders }, { settings.showReminders = $0 }))
+                Toggle("Calendar agenda (used by the Calendar tab)", isOn: binding({ settings.showCalendar }, { settings.showCalendar = $0 }))
                 if settings.showCalendar {
                     switch calendar.access {
                     case .denied:

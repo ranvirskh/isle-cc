@@ -56,6 +56,7 @@ public enum SettingsKey {
     public static let parallaxHover = "parallaxHover"             // content shifts slightly with the cursor, default false
     public static let autoUpdateCheck = "autoUpdateCheck"         // ask GitHub for a newer release once a day, default false
     public static let onboardingDone = "onboardingDone"           // first-run welcome shown
+    public static let showReminders = "showReminders"             // open reminders on the Home tab (asks for Reminders access), default true
     public static let toolsEnabled = "toolsEnabled"               // Tools tab (Keep Awake), default false
     public static let clipboardEnabled = "clipboardEnabled"       // Clipboard tab, memory only, default false
     public static let statsEnabled = "statsEnabled"               // System tab (CPU, memory, network, disk), default false
@@ -114,6 +115,7 @@ public enum SettingsKey {
         parallaxHover: false,
         autoUpdateCheck: false,
         onboardingDone: false,
+        showReminders: true,
         toolsEnabled: false,
         clipboardEnabled: false,
         statsEnabled: false,

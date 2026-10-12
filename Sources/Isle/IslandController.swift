@@ -69,7 +69,7 @@ final class IslandController {
 
         let root = IslandRootView().environmentObject(env.weather).environmentObject(model).environmentObject(env).environmentObject(env.media)
             .environmentObject(env.calendar).environmentObject(env.devices).environmentObject(env.agents).environmentObject(env.usage)
-            .environmentObject(env.shelf).environmentObject(env.tools).environmentObject(env.clipboard).environmentObject(env.mirror).environmentObject(env.scripts).environmentObject(env.stats).environmentObject(settings)
+            .environmentObject(env.shelf).environmentObject(env.tools).environmentObject(env.clipboard).environmentObject(env.reminders).environmentObject(env.mirror).environmentObject(env.scripts).environmentObject(env.stats).environmentObject(settings)
         hosting = NSHostingView(rootView: AnyView(root))
         hosting.sizingOptions = []
         hosting.wantsLayer = true

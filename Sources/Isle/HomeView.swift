@@ -19,9 +19,9 @@ struct HomeView: View {
                 EmptyPlayerView()
                     .frame(maxWidth: .infinity)
             }
-            if settings.showCalendar && style.showsCalendar {
+            if settings.showReminders && style.showsCalendar {
                 Divider().overlay(Color.white.opacity(0.12))
-                AgendaView()
+                RemindersPanel()
                     .frame(width: 190)
             }
         }
