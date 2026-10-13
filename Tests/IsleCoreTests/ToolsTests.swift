@@ -215,3 +215,13 @@ final class ReminderListsTests: XCTestCase {
         XCTAssertNil(ReminderLists.pick(counts: [:], preferred: "a"))
     }
 }
+
+final class LiveLayoutTests_Equalizer: XCTestCase {
+    func testEqualizerYieldsToUsageReadout() {
+        let withEq = LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false)
+        let withUsage = LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false, usageLive: true)
+        // Usage replaces the equalizer in the right slot: 12 + 50 = 62 (the cover side is 44).
+        XCTAssertEqual(withUsage, 62)
+        XCTAssertEqual(withEq, max(LiveLayout.coverSide, 12 + 22))
+    }
+}

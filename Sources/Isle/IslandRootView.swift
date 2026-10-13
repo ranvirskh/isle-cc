@@ -483,7 +483,7 @@ struct LiveActivityView: View {
                 } else if !model.mediaLive, model.chargingLive, let p = model.battery.percent {
                     Text("\(p)%").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(.white.opacity(0.9))
                 }
-                if model.mediaLive {
+                if model.mediaLive, model.usagePercent == nil {
                     EqualizerView(active: (media.now?.isPlaying ?? false) && model.phase == .collapsed)
                         .frame(width: 14)
                 }
