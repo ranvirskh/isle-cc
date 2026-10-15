@@ -24,6 +24,7 @@ final class ClaudeUsageController: ObservableObject {
     private let settings = Settings.shared
     private var timer: Timer?
     private var inFlight = false
+    private var authFailures = 0
     private var backoffUntil = Date.distantPast
     private var lastFetch = Date.distantPast
     nonisolated private static let interval: TimeInterval = 300
@@ -48,6 +49,8 @@ final class ClaudeUsageController: ObservableObject {
         guard active != codingAppActive else { return }
         codingAppActive = active
         guard active else { return }
+        // Switching to a terminal is when the reading matters: a stale "token rejected" wait should not hide it.
+        if failed { backoffUntil = .distantPast }
         refreshIfStale()
 
     }
@@ -85,15 +88,18 @@ final class ClaudeUsageController: ObservableObject {
             case .ok(let result):
                 self.windows = result
                 self.failed = false
+                self.authFailures = 0
                 self.backoffUntil = .distantPast
                 self.bridge(result)
             case .rateLimited(let wait):
                 self.failed = true
                 self.backoffUntil = Date().addingTimeInterval(wait)
             case .unauthorized, .noToken:
-                // The token is expired or missing: retrying every few minutes only wastes energy until Claude Code signs in again.
+                // Claude Code renews its token every few hours, so an expired one is usually fixed within minutes: retry
+                // soon, then back off (1, 2, 4 ... up to 15 minutes) in case it really is signed out.
                 self.failed = true
-                self.backoffUntil = Date().addingTimeInterval(Self.interval * 3)
+                self.authFailures += 1
+                self.backoffUntil = Date().addingTimeInterval(min(60 * pow(2, Double(self.authFailures - 1)), Self.interval * 3))
             case .failed:
                 // Keep the last good reading; it is dropped from view once its reset time passes.
                 self.failed = true
