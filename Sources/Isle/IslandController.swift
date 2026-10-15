@@ -113,6 +113,8 @@ final class IslandController {
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.fullScreen.$isFullScreen.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
+        env.agents.$snapshots.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.usage.objectWillChange
             .sink { [weak self] _ in DispatchQueue.main.async { MainActor.assumeIsolated { self?.updateLive() } } }.store(in: &cancellables)
         updateLive()
@@ -139,7 +141,8 @@ final class IslandController {
         }
         let download = wings && settings.downloadsIndicator ? env.downloads.summary : nil
         let alert = env.usage.pillAlert
-        let usage = alert == nil ? env.usage.pillPercent : nil
+        let usage: Double? = alert != nil || !env.usage.codingAppActive ? nil
+            : AIUsage.pill(claude: env.usage.windows, snapshots: env.agents.snapshots, now: Date())?.percent
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
                 || privacyState != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }

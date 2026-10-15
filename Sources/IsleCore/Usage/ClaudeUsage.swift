@@ -81,10 +81,13 @@ public enum ClaudeUsage {
         return "\(max(1, min(59, minutes)))m"
     }
 
-    /// Apps where seeing the usage limit matters: terminals (Claude Code runs there) and the Claude desktop app.
+    /// Apps where seeing the usage limit matters: terminals (AI CLIs run there), AI desktop apps and AI code editors.
     public static let codingBundleIDs: Set<String> = [
         "com.apple.Terminal", "com.googlecode.iterm2", "com.mitchellh.ghostty", "dev.warp.Warp-Stable", "net.kovidgoyal.kitty",
         "org.alacritty", "com.github.wez.wezterm", "co.zeit.hyper", "com.anthropic.claudefordesktop",
+        // Other AI apps and the editors AI agents run in.
+        "com.openai.chat", "com.openai.codex", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92", "dev.zed.Zed",
+        "com.exafunction.windsurf",
     ]
 
     /// "5h 70% · wk 20%" for the header chip.

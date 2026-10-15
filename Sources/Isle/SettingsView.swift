@@ -238,7 +238,7 @@ struct SettingsView: View {
                         Text("Only if it ran at least \(settings.agentNoticeMinutes.formatted()) min")
                     }
                 }
-                Toggle("Show Claude plan usage (5-hour and weekly) in the header and notch", isOn: binding({ settings.claudeUsage }, { settings.claudeUsage = $0 }))
+                Toggle("Show AI plan usage (Claude 5-hour and weekly; Codex and others when they report limits) in the header and notch", isOn: binding({ settings.claudeUsage }, { settings.claudeUsage = $0 }))
                 Text("Reads your Claude Code sign-in token from the Keychain and asks Anthropic for your usage every 5 minutes. Nothing else is sent or stored.")
                     .font(.caption).foregroundStyle(.secondary)
                 if settings.agentsEnabled {

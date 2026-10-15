@@ -235,3 +235,30 @@ final class ResetLabelTests: XCTestCase {
         XCTAssertEqual(ClaudeUsage.resetLabel(until: now.addingTimeInterval(1500), now: now), "25m")
     }
 }
+
+final class AIUsagePillTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_000_000)
+    private func window(_ id: String, _ pct: Double, minutes: Int) -> LimitWindow {
+        LimitWindow(id: id, usedPercent: pct, windowMinutes: minutes, resetsAt: now.addingTimeInterval(3600), observedAt: now, source: "t")
+    }
+    private func snap(_ a: AgentKind, active: TimeInterval, limits: [LimitWindow]?) -> AgentSnapshot {
+        AgentSnapshot(agent: a, state: .idle, project: nil, sessionsToday: 0, today: [], week: [],
+                      limits: limits.map { .available($0) } ?? .unavailable, plan: nil, lastActivity: now.addingTimeInterval(active))
+    }
+
+    func testMostRecentToolWins() {
+        let claude = [window("five_hour", 10, minutes: 300)]
+        let codex = snap(.codex, active: -60, limits: [window("primary", 40, minutes: 300), window("secondary", 5, minutes: 10080)])
+        let oldClaude = snap(.claudeCode, active: -3600, limits: nil)
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [oldClaude, codex], now: now), .init(agent: .codex, percent: 40))
+        let freshClaude = snap(.claudeCode, active: -10, limits: nil)
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], now: now), .init(agent: .claudeCode, percent: 10))
+    }
+
+    func testCodexAloneAndWeeklyOnlyIgnored() {
+        let codex = snap(.codex, active: -5, limits: [window("secondary", 5, minutes: 10080)])
+        XCTAssertNil(AIUsage.pill(claude: [], snapshots: [codex], now: now))
+        let withSession = snap(.codex, active: -5, limits: [window("primary", 22, minutes: 300)])
+        XCTAssertEqual(AIUsage.pill(claude: [], snapshots: [withSession], now: now), .init(agent: .codex, percent: 22))
+    }
+}
