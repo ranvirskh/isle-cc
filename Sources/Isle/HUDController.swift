@@ -28,13 +28,14 @@ final class HUDController: ObservableObject {
         sync()
     }
 
-    func appWillTerminate() { removeTap() }
+    func appWillTerminate() { removeTap(); stopBrightnessWatch() }
 
     private func sync() {
         poll?.invalidate(); poll = nil
         stopMic?(); stopMic = nil
-        guard settings.hudReplacement else { removeTap(); return }
+        guard settings.hudReplacement else { removeTap(); stopBrightnessWatch(); return }
         watchMicrophone()
+        startBrightnessWatch()
         trusted = AXIsProcessTrusted()
         if trusted { installTap(); return }
         // Ask once; macOS shows its permission prompt. Then wait for the user to grant it.
@@ -63,6 +64,82 @@ final class HUDController: ObservableObject {
 
     func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") { NSWorkspace.shared.open(url) }
+    }
+
+    // MARK: Brightness watcher
+    //
+    // On some Macs (macOS 27 here) the brightness keys never reach an event tap: Control Center handles them itself and
+    // draws its own banner, which an app cannot suppress. So the level is polled, and a change from any source shows in
+    // the island, next to the macOS banner.
+
+    private var brightnessTimer: Timer?
+    private var lastBrightness: Double?
+
+    private func startBrightnessWatch() {
+        guard brightnessTimer == nil, SystemLevels.brightnessAvailable else { return }
+        lastBrightness = SystemLevels.brightness()
+        scheduleBrightnessTimer(fast: false)
+        // The system announces brightness changes; react at once instead of waiting for the next idle check.
+        for name in ["com.apple.BezelEngine.BrightnessChanged", "com.apple.BezelServices.BrightnessChanged",
+                     "com.apple.controlcenter.display.brightness", "com.apple.CoreBrightness.DisplayBrightnessChanged"] {
+            brightnessObservers.append(DistributedNotificationCenter.default().addObserver(forName: .init(name), object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    Log.write("hud: brightness notification \(name)")
+                    self?.scheduleBrightnessTimer(fast: true)
+                    self?.brightnessTick()
+                }
+            })
+        }
+    }
+
+    /// 120 Hz while a change is under way (so a held key moves the bar as smoothly as the display refreshes), 20 Hz when
+    /// idle, which keeps the watcher's CPU cost negligible.
+    private func scheduleBrightnessTimer(fast: Bool) {
+        brightnessTimer?.invalidate()
+        fastUntil = fast ? Date().addingTimeInterval(1.2) : nil
+        let timer = Timer(timeInterval: fast ? 1.0 / 120 : 1.0 / 20, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.brightnessTick() }
+        }
+        timer.tolerance = 0
+        RunLoop.main.add(timer, forMode: .common)
+        brightnessTimer = timer
+    }
+    private var fastUntil: Date?
+    private var brightnessObservers: [NSObjectProtocol] = []
+
+    private func stopBrightnessWatch() {
+        guard brightnessTimer != nil else { return }
+        brightnessTimer?.invalidate(); brightnessTimer = nil
+        brightnessObservers.forEach { DistributedNotificationCenter.default().removeObserver($0) }; brightnessObservers = []
+    }
+
+    // A key press moves the level a whole step (about 6%) within a fraction of a second; automatic brightness drifts
+    // slowly. Only a fast move is shown, so ambient-light adjustments never raise the indicator.
+    private var episode: (start: Date, from: Double)?
+    private var userDriven = false
+    private var lastMove = Date.distantPast
+
+    private func brightnessTick() {
+        if let until = fastUntil, Date() > until { scheduleBrightnessTimer(fast: false) }
+        guard let now = SystemLevels.brightness() else { return }
+        let base = lastBrightness ?? now
+        lastBrightness = base
+        let date = Date()
+        if abs(now - base) > 0.005 {
+            lastMove = date
+            if episode == nil { episode = (date, base); if fastUntil == nil { scheduleBrightnessTimer(fast: true) } }
+            if let e = episode, !userDriven {
+                if abs(now - e.from) >= 0.04, date.timeIntervalSince(e.start) <= 0.35 { userDriven = true }
+                else if date.timeIntervalSince(e.start) > 0.35 { episode = nil }      // slow drift: automatic brightness
+            }
+            lastBrightness = now
+            if userDriven {
+                fastUntil = date.addingTimeInterval(1.2)
+                onLevel?(HUDState(kind: .brightness, level: now))
+            }
+        } else if userDriven, date.timeIntervalSince(lastMove) > 0.4 {
+            userDriven = false; episode = nil
+        }
     }
 
     // MARK: Event tap
@@ -135,6 +212,7 @@ final class HUDController: ObservableObject {
             guard press.isDown else { return HUDState(kind: .brightness, level: current) }
             let next = HUDStep.next(current, up: press.key == .brightnessUp, fine: fine, percent: settings.hudStepPercent)
             guard SystemLevels.setBrightness(next) else { return nil }
+            lastBrightness = next        // so the watcher does not show the same change twice
             return HUDState(kind: .brightness, level: next)
         }
     }

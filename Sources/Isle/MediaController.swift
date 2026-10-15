@@ -52,6 +52,7 @@ final class MediaController: ObservableObject {
         if let t = now?.track, artKey(t) == identity || identity == pendingIdentity { artwork = image }
     }
     private var pendingIdentity: String?
+    private var artworkFetching: String?
 
     init() {
         let contact = settings.lyricsContact
@@ -202,14 +203,17 @@ final class MediaController: ObservableObject {
         if track.duration != nil { caps.insert(.seek) }
         let artID = "\(bundle)|\(track.identity)"
         setNow(NowPlaying(track: track, clock: clock, shuffle: snap.shuffle, capabilities: caps), artworkID: artID)
-        if bundle == KnownBundle.appleMusic, artworkCache?.id != artID {
+        if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, helperArtwork?.key == titleKey(track), artworkByTrack[artKey(track)] == nil {
+            remember(img, for: artKey(track))
+        } else if bundle == KnownBundle.appleMusic || bundle == KnownBundle.spotify, artworkCache?.id != artID, artworkByTrack[artKey(track)] == nil, artworkFetching != artID {
+            artworkFetching = artID
             scripting?.artworkData { [weak self] data in
-                guard let self, self.now?.track.identity == track.identity, let data, let img = NSImage(data: data) else { return }
+                guard let self else { return }
+                if self.artworkFetching == artID { self.artworkFetching = nil }
+                guard self.now?.track.identity == track.identity, let data, let img = NSImage(data: data) else { return }
                 self.artworkCache = (artID, img)
                 self.remember(img, for: self.artKey(track))
             }
-        } else if bundle == KnownBundle.spotify, let img = helperArtwork?.image, helperArtwork?.bundle == bundle, helperArtwork?.key == titleKey(track), artworkByTrack[artKey(track)] == nil {
-            remember(img, for: artKey(track))
         }
     }
 

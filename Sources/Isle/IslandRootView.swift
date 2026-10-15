@@ -182,8 +182,32 @@ struct HeaderView: View {
                 }
             }
             Spacer(minLength: model.isNotched ? model.collapsedSize.width + 16 : 8)
+            if model.isNotched {
+                // The right-hand items must stay clear of the real notch, so drop the reset time when they would reach it.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) { rightItems(showReset: true) }
+                    HStack(spacing: 4) { rightItems(showReset: true, fiveHour: false) }
+                    HStack(spacing: 4) { rightItems(showReset: false) }
+                }
+                .frame(maxWidth: rightRoom, alignment: .trailing)
+            } else {
+                rightItems(showReset: true)
+            }
+        }
+        .padding(.horizontal, flare + 14)
+        .padding(.top, model.isNotched ? 0 : 4)
+    }
+
+
+    /// Room between the real notch and the island's right edge.
+    private var rightRoom: CGFloat {
+        let half = (model.expandedSize(for: model.tab).width - model.collapsedSize.width) / 2
+        return max(0, half - flare - 14 - 12)
+    }
+
+    @ViewBuilder private func rightItems(showReset: Bool, fiveHour: Bool = true) -> some View {
             if settings.claudeUsage, !ClaudeUsage.displayed(usage.windows, now: Date(), alwaysShowFiveHour: usage.codingAppActive).isEmpty {
-                UsageChip(windows: usage.windows, stale: usage.failed, alwaysShowFiveHour: usage.codingAppActive)
+                UsageChip(windows: usage.windows, stale: usage.failed, alwaysShowFiveHour: usage.codingAppActive, showReset: showReset, showFiveHour: fiveHour)
             } else if settings.agentHeaderChip, settings.agentsEnabled, let top = LimitFormat.highestPercent(agents.snapshots, now: Date()) {
                 Text("\(Int(top.rounded()))%")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -195,9 +219,6 @@ struct HeaderView: View {
             if settings.weatherEnabled, let w = weather.reading { WeatherChip(reading: w) }
             if settings.privacyIndicator { PrivacyDots(state: model.privacy) }
             if settings.batteryInHeader, devices.battery.hasBattery { BatteryChip(state: devices.battery) }
-        }
-        .padding(.horizontal, flare + 14)
-        .padding(.top, model.isNotched ? 0 : 4)
     }
 
     private var tabs: [IslandTab] { settings.visibleTabs }
@@ -615,10 +636,24 @@ struct UsageChip: View {
     let windows: [LimitWindow]
     let stale: Bool
     var alwaysShowFiveHour = false
+    var showReset = true
+    var showFiveHour = true
+
+    private static func tooltip(_ shown: [LimitWindow], now: Date, stale: Bool) -> String {
+        var lines: [String] = []
+        for w in shown {
+            var line = "\(LimitFormat.windowName(w)): \(Int(w.usedPercent.rounded()))% used"
+            if let left = LimitFormat.countdown(to: w.resetsAt, now: now) { line += ", resets in \(left)" }
+            if w.id == "seven_day", let reset = w.resetsAt { line += " (" + reset.formatted(.dateTime.weekday(.wide).hour().minute()) + ")" }
+            lines.append(line)
+        }
+        if stale { lines.append("Could not refresh just now") }
+        return lines.joined(separator: "\n")
+    }
 
     var body: some View {
         let now = Date()
-        let shown = ClaudeUsage.displayed(windows, now: now, alwaysShowFiveHour: alwaysShowFiveHour)
+        let shown = ClaudeUsage.displayed(windows, now: now, alwaysShowFiveHour: alwaysShowFiveHour).filter { showFiveHour || $0.id != "five_hour" }
         if !shown.isEmpty {
             HStack(spacing: 6) {
                 Image(systemName: "sparkle").font(.system(size: 9, weight: .bold)).foregroundStyle(.white.opacity(0.6))
@@ -626,6 +661,9 @@ struct UsageChip: View {
                     HStack(spacing: 3) {
                         Text(w.id == "five_hour" ? "5h" : "wk").foregroundStyle(.white.opacity(0.55))
                         Text("\(Int(w.usedPercent.rounded()))%").foregroundStyle(Color(severity: LimitSeverity(usedPercent: w.usedPercent)))
+                        if showReset, w.id == "seven_day", let reset = w.resetsAt, reset > now {
+                            Text("· \(ClaudeUsage.resetLabel(until: reset, now: now))").foregroundStyle(.white.opacity(0.55))
+                        }
                     }
                 }
             }
@@ -633,9 +671,7 @@ struct UsageChip: View {
             .padding(.horizontal, 8).padding(.vertical, 3)
             .background(Capsule().fill(Color.white.opacity(0.12)))
             .opacity(stale ? 0.6 : 1)
-            .help(shown.map { w in
-                "\(LimitFormat.windowName(w)): \(Int(w.usedPercent.rounded()))% used" + (LimitFormat.countdown(to: w.resetsAt, now: now).map { ", resets in \($0)" } ?? "")
-            }.joined(separator: "\n") + (stale ? "\nCould not refresh just now" : ""))
+            .help(Self.tooltip(shown, now: now, stale: stale))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Claude usage: " + ClaudeUsage.summary(shown, now: now))
         }
@@ -690,7 +726,7 @@ struct HUDBar: View {
                 .frame(height: 6)
             }
         }
-        .animation(.easeOut(duration: 0.12), value: hud)
+        .animation(.smooth(duration: 0.22), value: hud.shownLevel)
         .padding(.horizontal, flare + 18)
         .padding(.top, model.isNotched ? model.collapsedSize.height + 2 : 10)
         .padding(.bottom, 12)

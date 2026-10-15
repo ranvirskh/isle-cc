@@ -225,3 +225,13 @@ final class LiveLayoutTests_Equalizer: XCTestCase {
         XCTAssertEqual(withEq, max(LiveLayout.coverSide, 12 + 22))
     }
 }
+
+final class ResetLabelTests: XCTestCase {
+    func testResetLabelIsCompact() {
+        let now = Date(timeIntervalSince1970: 0)
+        XCTAssertEqual(ClaudeUsage.resetLabel(until: now.addingTimeInterval(6.9 * 3600), now: now), "7h")
+        XCTAssertEqual(ClaudeUsage.resetLabel(until: now.addingTimeInterval(86400 * 3 + 4.2 * 3600), now: now), "3d 4h")
+        XCTAssertEqual(ClaudeUsage.resetLabel(until: now.addingTimeInterval(86400 * 2 + 60), now: now), "2d")
+        XCTAssertEqual(ClaudeUsage.resetLabel(until: now.addingTimeInterval(1500), now: now), "25m")
+    }
+}

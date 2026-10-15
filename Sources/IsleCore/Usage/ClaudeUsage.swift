@@ -64,6 +64,14 @@ public enum ClaudeUsage {
         return Alert(percent: w.usedPercent, resetsAt: reset)
     }
 
+    /// Short time until a weekly reset: "3d 4h" from a day up, otherwise the hour/minute label. Keeps the header chip narrow.
+    public static func resetLabel(until reset: Date, now: Date) -> String {
+        let seconds = reset.timeIntervalSince(now)
+        guard seconds >= 86400 else { return timeLeftLabel(until: reset, now: now) }
+        let days = Int(seconds / 86400), hours = Int((seconds.truncatingRemainder(dividingBy: 86400)) / 3600)
+        return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"
+    }
+
     /// Time until reset: whole hours (nearest) from one hour up, minutes below one hour. "2h", "45m", "<1m".
     public static func timeLeftLabel(until reset: Date, now: Date) -> String {
         let seconds = reset.timeIntervalSince(now)

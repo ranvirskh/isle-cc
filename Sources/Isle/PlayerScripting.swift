@@ -62,9 +62,15 @@ final class PlayerScripting {
     }
 
     func artworkData(_ completion: @escaping (Data?) -> Void) {
-        // Spotify exposes only a URL, which would need a network fetch; its artwork comes from the system helper.
-        guard !isSpotify, isRunning else { completion(nil); return }
-        let script = """
+        guard isRunning else { completion(nil); return }
+        // Spotify exposes only a URL for the cover, so it is downloaded.
+        let script = isSpotify ? """
+        tell application id "\(bundleID)"
+          try
+            return artwork url of current track
+          end try
+        end tell
+        """ : """
         tell application id "\(bundleID)"
           try
             return data of artwork 1 of current track
@@ -74,6 +80,12 @@ final class PlayerScripting {
         queue.async {
             var err: NSDictionary?
             let result = NSAppleScript(source: script)?.executeAndReturnError(&err)
+            if self.isSpotify {
+                var data: Data?
+                if err == nil, let s = result?.stringValue, let url = URL(string: s) { data = try? Data(contentsOf: url) }
+                DispatchQueue.main.async { completion(data) }
+                return
+            }
             let data = err == nil ? result?.data : nil
             DispatchQueue.main.async { completion(data) }
         }
