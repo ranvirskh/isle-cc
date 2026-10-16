@@ -458,7 +458,12 @@ final class IslandController {
     func showHUD(_ hud: HUDState) {
         model.hud = hud
         let duration = Motion.scaled(1.6)
-        if machine.phase == .popup, model.popup?.kind == .hud {
+        if machine.phase == .popup {
+            // A level change takes over whatever pop-up is showing (a song banner, a device notice): it must never be lost.
+            if model.popup?.kind != .hud {
+                popups.finishCurrent()
+                model.popup = PopupItem(id: "hud", kind: .hud, symbol: hud.symbol, title: hud.title)
+            }
             popupTimer?.invalidate()
             popupTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
                 MainActor.assumeIsolated { self?.handle(.popupTimerFired) }

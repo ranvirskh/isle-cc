@@ -75,7 +75,20 @@ final class HUDController: ObservableObject {
     private var brightnessTimer: Timer?
     private var lastBrightness: Double?
 
+    private var screenObserver: NSObjectProtocol?
+
     private func startBrightnessWatch() {
+        // Connecting or removing a display changes what can be read; start over so the first reading is a fresh baseline.
+        if screenObserver == nil {
+            screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, self.settings.hudReplacement else { return }
+                    self.stopBrightnessWatch()
+                    self.lastBrightness = nil; self.episode = nil; self.userDriven = false
+                    self.startBrightnessWatch()
+                }
+            }
+        }
         guard brightnessTimer == nil, SystemLevels.brightnessAvailable else { return }
         lastBrightness = SystemLevels.brightness()
         scheduleBrightnessTimer(fast: false)
@@ -129,8 +142,9 @@ final class HUDController: ObservableObject {
             lastMove = date
             if episode == nil { episode = (date, base); if fastUntil == nil { scheduleBrightnessTimer(fast: true) } }
             if let e = episode, !userDriven {
-                if abs(now - e.from) >= 0.04, date.timeIntervalSince(e.start) <= 0.35 { userDriven = true }
-                else if date.timeIntervalSince(e.start) > 0.35 { episode = nil }      // slow drift: automatic brightness
+                let atEnd = now <= 0.001 || now >= 0.999      // a press that only closes the last bit of the range
+                if abs(now - e.from) >= (atEnd ? 0.01 : 0.04), date.timeIntervalSince(e.start) <= 0.35 { userDriven = true; Log.write("hud: brightness key change \(String(format: "%.3f", e.from)) -> \(String(format: "%.3f", now))") }
+                else if date.timeIntervalSince(e.start) > 0.35 { episode = nil; Log.write("hud: brightness drift ignored (\(String(format: "%.3f", e.from)) -> \(String(format: "%.3f", now)))") }      // slow drift: automatic brightness
             }
             lastBrightness = now
             if userDriven {
