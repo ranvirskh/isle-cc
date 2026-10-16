@@ -23,7 +23,7 @@ final class GeometryTests: XCTestCase {
     func testNoNotchDrawsCenteredPillAtTop() {
         XCTAssertFalse(external.hasNotch)
         let frame = NotchGeometry.collapsedFrame(external)
-        XCTAssertEqual(frame.size, NotchGeometry.pillSize)
+        XCTAssertEqual(frame.size, CGSize(width: NotchGeometry.pillWidth, height: external.menuBarHeight))
         XCTAssertEqual(frame.midX, external.frame.midX, accuracy: 0.5)
         XCTAssertEqual(frame.maxY, external.frame.maxY)
     }
@@ -31,7 +31,7 @@ final class GeometryTests: XCTestCase {
     func testSafeAreaWithoutAuxiliaryAreasIsNotANotch() {
         let s = ScreenInfo(frame: CGRect(x: 0, y: 0, width: 1440, height: 900), safeAreaTop: 24, auxiliaryTopLeft: nil, auxiliaryTopRight: nil)
         XCTAssertFalse(s.hasNotch)
-        XCTAssertEqual(NotchGeometry.collapsedSize(s), NotchGeometry.pillSize)
+        XCTAssertEqual(NotchGeometry.collapsedSize(s), CGSize(width: NotchGeometry.pillWidth, height: s.menuBarHeight))
     }
 
     func testExpandedIsCenteredOnNotchAndHangsFromTop() {

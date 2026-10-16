@@ -127,6 +127,6 @@ final class AppEnv: ObservableObject {
     let updates = UpdateChecker()
     let hud = HUDController()
     let settings = Settings.shared
-    var island: IslandController!
+    var island: IslandHub!
     var lock: LockController?
 }

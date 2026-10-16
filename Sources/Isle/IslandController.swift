@@ -40,12 +40,30 @@ final class IslandController {
     /// No allowed display is connected (external displays off, lid closed): nothing is drawn and the mouse is ignored.
     private var hiddenOnDisallowedScreen = false
 
-    init(env: AppEnv) {
+    /// One controller per display: it owns that display's panel, state machine and pop-ups.
+    init(env: AppEnv, screen: NSScreen) {
         self.env = env
-        let screen = Self.pickScreen(choice: Settings.shared.displayChoice)
         model = IslandModel(screen: ScreenInfo(screen))
         currentScreenID = screen.displayID
     }
+
+    var displayID: CGDirectDisplayID? { currentScreenID }
+    var phase: IslandStateMachine.Phase { machine.phase }
+    var isHovered: Bool { hoveredFlag }
+
+    /// Removes the panel and everything that listens, when the display goes away or external displays are turned off.
+    func stop() {
+        for t in [hoverTimer, collapseTimer, popupTimer, ownDragPoll] { t?.invalidate() }
+        popupGapWork?.cancel(); popupClearWork?.cancel(); contentWork?.cancel(); trailingMouseUpdate?.cancel(); chargingBriefWork?.cancel()
+        monitors.forEach { NSEvent.removeMonitor($0) }; monitors = []
+        observers.forEach { NotificationCenter.default.removeObserver($0); NSWorkspace.shared.notificationCenter.removeObserver($0) }
+        observers = []
+        cancellables.removeAll()
+        panel?.orderOut(nil)
+        panel?.contentView = nil
+        panel = nil
+    }
+    private var observers: [NSObjectProtocol] = []
 
     // MARK: Setup
 
@@ -80,14 +98,13 @@ final class IslandController {
 
         installMonitors()
         let nc = NotificationCenter.default
-        nc.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
+        observers.append(nc.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screensChanged() }
-        }
-        nc.addObserver(forName: .settingsChanged, object: nil, queue: .main) { [weak self] n in
+        })
+        observers.append(nc.addObserver(forName: .settingsChanged, object: nil, queue: .main) { [weak self] n in
             MainActor.assumeIsolated {
                 self?.applySettings()
                 self?.updateLive()
-                if let k = n.object as? String, k == SettingsKey.displayChoice || k == SettingsKey.externalDisplays { self?.screensChanged(force: true) }
                 switch n.object as? String {
                 case SettingsKey.agentsEnabled, SettingsKey.toolsEnabled, SettingsKey.clipboardEnabled, SettingsKey.statsEnabled,
                      SettingsKey.calendarTabEnabled, SettingsKey.mirrorEnabled, SettingsKey.scriptsEnabled, SettingsKey.shelfEnabled, SettingsKey.tabOrder:
@@ -95,13 +112,13 @@ final class IslandController {
                 default: break
                 }
             }
-        }
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+        })
+        observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screensChanged(force: true) }
-        }
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.panel.orderFrontRegardless(); self?.updateMouse() }
-        }
+        })
+        observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.panel?.orderFrontRegardless(); self?.updateMouse() }
+        })
         updateReduceMotion()
         env.media.$now.map { $0?.isPlaying ?? false }.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
@@ -197,31 +214,19 @@ final class IslandController {
         return CGDisplayIsBuiltin(id) != 0
     }
 
-    /// Falls back to the first screen when none is allowed (clamshell with external displays off); the panel is then hidden.
-    static func pickScreen(choice: String) -> NSScreen {
-        let all = NSScreen.screens
-        let screens = all.filter(isAllowed)
-        guard !screens.isEmpty else { return NSScreen.main ?? all[0] }
-        if choice == "main", let s = NSScreen.main, screens.contains(s) { return s }
-        if choice != "cursor", choice != "main", let s = screens.first(where: { $0.uuidString == choice }) { return s }
-        let idx = NotchGeometry.screenIndex(containing: NSEvent.mouseLocation, frames: screens.map(\.frame))
-        return idx.map { screens[$0] } ?? screens[0]
-    }
-
     private func screensChanged(force: Bool = false) {
-        guard !NSScreen.screens.isEmpty else { return }
-        let target = Self.pickScreen(choice: settings.displayChoice)
+        guard let id = currentScreenID, let target = NSScreen.screens.first(where: { $0.displayID == id }) else { return }
         let info = ScreenInfo(target)
-        if force || info != model.screen || target.displayID != currentScreenID {
+        if force || info != model.screen {
             if machine.phase != .collapsed { handle(.forceCollapse) }
             model.screen = info
-            currentScreenID = target.displayID
             positionWindow()
             updateLive()
         }
     }
 
     private func positionWindow() {
+        guard panel != nil else { return }
         let frame = NotchGeometry.openWindowFrame(model.screen, contentSize: model.maxContentSize)
         panel.setFrame(frame, display: true)
         if let id = currentScreenID, let s = NSScreen.screens.first(where: { $0.displayID == id }), !Self.isAllowed(s) {
@@ -301,13 +306,8 @@ final class IslandController {
     }
 
     private func updateMouse() {
-        guard !hiddenOnDisallowedScreen else { return }
+        guard panel != nil, !hiddenOnDisallowedScreen else { return }
         let p = NSEvent.mouseLocation
-        // Follow the cursor to another display, but only while idle.
-        if settings.displayChoice == "cursor", machine.phase == .collapsed, !hoveredFlag, !machine.isDragging,
-           Self.pickScreen(choice: "cursor").displayID != currentScreenID {
-            screensChanged(force: true)
-        }
         let inside = hoverRegion().contains(p)
         updateParallax(p)
         if inside != hoveredFlag {

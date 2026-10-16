@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.setActivationPolicy(.accessory)
         Log.write("launch v\(IsleInfo.version) on \(ProcessInfo.processInfo.operatingSystemVersionString)")
 
-        let island = IslandController(env: env)
+        let island = IslandHub(env: env)
         env.island = island
         let simulate = args.contains("--simulate-lock")
         lockController = LockController(media: env.media, simulate: simulate)
@@ -54,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         env.downloads.start()
         env.weather.start()
-        env.fullScreen.start { [weak island] in island?.model.screen ?? ScreenInfo(NSScreen.main ?? NSScreen.screens[0]) }
+        env.fullScreen.start { [weak island] in island?.screenInfo ?? ScreenInfo(NSScreen.main ?? NSScreen.screens[0]) }
         lockController.start()
         Log.write("lock feature: supported=\(lockController.isSupported) \(lockController.unsupportedReason ?? "")")
         setUpStatusItem()

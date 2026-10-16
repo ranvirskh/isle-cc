@@ -37,7 +37,8 @@ public enum IslandTab: String, CaseIterable, Codable {
 
 public enum NotchGeometry {
     /// Pill drawn on displays without a notch.
-    public static let pillSize = CGSize(width: 150, height: 9)
+    /// Width of the idle island on a display without a notch; its height is the menu bar's.
+    public static let pillWidth: CGFloat = 190
     /// Room around the expanded shape for the shadow and spring overshoot.
     public static let shadowMargin = CGSize(width: 36, height: 44)
     public static let popupSize = CGSize(width: 330, height: 78)
@@ -50,7 +51,7 @@ public enum NotchGeometry {
             let width = s.frame.width - l.width - r.width
             return CGSize(width: width.rounded(), height: s.safeAreaTop)
         }
-        return pillSize
+        return CGSize(width: pillWidth, height: max(s.menuBarHeight, 22))
     }
 
     /// Collapsed island frame in global coordinates, flush with the top edge.

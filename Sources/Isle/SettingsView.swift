@@ -90,14 +90,7 @@ struct SettingsView: View {
                     }
                 }
                 HUDSettingsRow(hud: env.hud, settings: settings)
-                Toggle("Show the island on external displays (off: built-in display only)", isOn: binding({ settings.externalDisplays }, { settings.externalDisplays = $0 }))
-                Picker("Display", selection: binding({ settings.displayChoice }, { settings.displayChoice = $0 })) {
-                    Text("The display with the cursor").tag("cursor")
-                    Text("Main display").tag("main")
-                    ForEach(NSScreen.screens.filter(IslandController.isAllowed), id: \.self) { s in
-                        if let id = s.uuidString { Text(s.localizedName).tag(id) }
-                    }
-                }
+                Toggle("Show the island on every connected external display too (off: built-in display only)", isOn: binding({ settings.externalDisplays }, { settings.externalDisplays = $0 }))
                 Toggle("Battery in the header", isOn: binding({ settings.batteryInHeader }, { settings.batteryInHeader = $0 }))
             }
 

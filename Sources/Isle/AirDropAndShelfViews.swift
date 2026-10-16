@@ -192,7 +192,7 @@ struct ShelfTile: View {
 struct ShelfTileInteraction: NSViewRepresentable {
     let item: ShelfItem
     let shelf: ShelfController
-    let island: IslandController
+    let island: IslandHub
 
     func makeNSView(context: Context) -> TileNSView {
         let v = TileNSView()
@@ -205,7 +205,7 @@ struct ShelfTileInteraction: NSViewRepresentable {
 final class TileNSView: NSView, NSDraggingSource {
     var item: ShelfItem!
     weak var shelf: ShelfController!
-    weak var island: IslandController!
+    weak var island: IslandHub!
     private var downPoint: NSPoint = .zero
     private var didDrag = false
     private var collapseSelectionOnUp = false

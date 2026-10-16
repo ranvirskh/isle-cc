@@ -46,7 +46,7 @@ struct IslandRootView: View {
     private var flare: CGFloat { model.phase == .collapsed ? (model.liveActive && model.isNotched ? model.liveFlare : 0) : (model.isNotched ? 14 : 12) }
     private var bottom: CGFloat {
         switch model.phase {
-        case .collapsed: return model.isNotched ? 9 : 4.5
+        case .collapsed: return 9
         case .popup: return 24
         case .expanded: return 30
         }
