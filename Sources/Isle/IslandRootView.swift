@@ -59,10 +59,10 @@ struct IslandRootView: View {
             ZStack(alignment: .top) {
                 IslandShape(flare: flare, bottom: bottom)
                     .fill(style.background)
+                    // Without a notch the idle island is fully invisible; it fades in when hovered or showing a pop-up.
+                    .opacity(!model.isNotched && model.phase == .collapsed ? 0 : 1)
+                    .animation(Motion.ease(0.15, .content), value: model.phase)
                     .overlay(GlossOverlay(flare: flare, bottom: bottom).opacity(style.hasGloss && model.phase != .collapsed ? 1 : 0))
-                    // On a display without a notch the idle pill is a plain black bar; a faint edge keeps it visible on dark menu bars.
-                    .overlay(IslandShape(flare: flare, bottom: bottom).stroke(Color.white.opacity(0.28), lineWidth: 0.75)
-                        .opacity(!model.isNotched && model.phase == .collapsed && !model.liveActive ? 1 : 0))
                     .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.4), radius: 10, x: 0, y: 4)
                     // Laid out at the collapsed size, never the animating shape size, so the cover cannot be stretched or
                     // dragged outward while the island grows; it disappears at once on opening and fades in once closed.

@@ -143,9 +143,11 @@ final class IslandController {
     /// Decides what the collapsed island shows. Media (cover, equalizer, song banner) stays quiet while the user is in
     /// a full-screen Space; the privacy dots do not, because they are about safety rather than music.
     private func updateLive() {
+        // Without a notch there is nothing to hide inside, so the idle island is invisible: no passive items at all.
+        // It only appears when hovered/clicked, or for event pop-ups (volume, song change, task finished).
+        let quiet = !model.isNotched
         // With the live-items setting off, the notch only widens for Claude usage, while a terminal or Claude is in front.
-        // Without a notch (external displays) there is no real notch to hide inside, so live items always show.
-        let wings = settings.liveWings || !model.isNotched
+        let wings = settings.liveWings && !quiet
         let media = wings && settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
         let privacy = wings && settings.privacyIndicator && env.privacy.state.isActive
         let privacyState = wings ? env.privacy.state : PrivacyState()
@@ -157,8 +159,8 @@ final class IslandController {
         case .brief: charging = chargingBrief && battery.isCharging
         }
         let download = wings && settings.downloadsIndicator ? env.downloads.summary : nil
-        let alert = env.usage.pillAlert
-        let usage: Double? = alert != nil || !env.usage.codingAppActive ? nil
+        let alert = quiet ? nil : env.usage.pillAlert
+        let usage: Double? = quiet || alert != nil || !env.usage.codingAppActive ? nil
             : AIUsage.pill(claude: env.usage.windows, snapshots: env.agents.snapshots, now: Date())?.percent
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
