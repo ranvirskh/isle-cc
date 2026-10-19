@@ -19,8 +19,9 @@ final class ClaudeUsageController: ObservableObject {
         return five.usedPercent
     }
 
-    /// 90% or more: percentage and time left on the left of the notch, again only while something is actively using Claude.
-    var pillAlert: ClaudeUsage.Alert? { claudeActive ? ClaudeUsage.alert(windows, now: Date()) : nil }
+    /// Always nil: the usage readout stays on the right of the notch at every level, including 90% and above.
+    /// (It used to move to the left with the time left until reset.)
+    var pillAlert: ClaudeUsage.Alert? { nil }
 
     private let settings = Settings.shared
     private var timer: Timer?
