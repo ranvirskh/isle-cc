@@ -59,4 +59,12 @@ final class UsageActivityTests: XCTestCase {
         XCTAssertTrue(ClaudeUsage.displayed([w], now: now, alwaysShowFiveHour: false).isEmpty, "idle and low: hidden")
         XCTAssertEqual(ClaudeUsage.displayed([w], now: now, alwaysShowFiveHour: true).map(\.id), ["five_hour"], "actively used: shown even at 12%")
     }
+
+    func testHoursLeftLabel() {
+        let now = Date()
+        XCTAssertEqual(ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(90 * 60), now: now), "1.5")
+        XCTAssertEqual(ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(5 * 3600), now: now), "5")
+        XCTAssertEqual(ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(45 * 60), now: now), "45m")
+        XCTAssertEqual(ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(-10), now: now), "0m")
+    }
 }

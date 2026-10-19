@@ -32,6 +32,8 @@ final class IslandModel: ObservableObject {
     @Published var usagePercent: Double?
     /// 5-hour usage at 90% or more: percentage and time left move to the left of the notch.
     @Published var usageAlert: ClaudeUsage.Alert?
+    /// When the 5-hour window resets; the notch readout shows the hours left until then.
+    @Published var usageResetsAt: Date?
     @Published var chargingLive = false
     @Published var download: DownloadSummary?
     var downloadLive: Bool { download != nil }

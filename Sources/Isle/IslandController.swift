@@ -162,9 +162,10 @@ final class IslandController {
         let alert = quiet ? nil : env.usage.pillAlert
         let usage: Double? = quiet || alert != nil || !env.usage.claudeActive ? nil
             : AIUsage.pill(claude: env.usage.windows, snapshots: env.agents.snapshots, now: Date())?.percent
+        let resetsAt = usage == nil ? nil : env.usage.windows.first(where: { $0.id == "five_hour" })?.resetsAt
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
-                || privacyState != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
+                || privacyState != model.privacy || usage != model.usagePercent || resetsAt != model.usageResetsAt || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
         Log.write("live: media=\(media) privacy=\(privacy) charging=\(charging) usage=\(usage.map { String(Int($0)) } ?? "nil") alert=\(alert != nil) active=\(env.usage.claudeActive) notched=\(model.isNotched)")
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
@@ -175,6 +176,7 @@ final class IslandController {
             model.privacy = privacyState
             model.usagePercent = usage
             model.usageAlert = alert
+            model.usageResetsAt = resetsAt
             model.liveActive = live
         }
     }

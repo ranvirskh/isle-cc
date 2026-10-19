@@ -64,6 +64,14 @@ public enum ClaudeUsage {
         return Alert(percent: w.usedPercent, resetsAt: reset)
     }
 
+    /// Hours until a reset for the notch readout: "1.5" for 90 minutes, "5" for five hours; "45m" under an hour.
+    public static func hoursLeftLabel(until reset: Date, now: Date) -> String {
+        let minutes = Int((reset.timeIntervalSince(now) / 60).rounded(.up))
+        guard minutes >= 60 else { return "\(max(minutes, 0))m" }
+        let tenths = Int((Double(minutes) / 6).rounded())   // hours in tenths
+        return tenths % 10 == 0 ? "\(tenths / 10)" : "\(tenths / 10).\(tenths % 10)"
+    }
+
     /// Short time until a weekly reset: "3d 4h" from a day up, otherwise the hour/minute label. Keeps the header chip narrow.
     public static func resetLabel(until reset: Date, now: Date) -> String {
         let seconds = reset.timeIntervalSince(now)

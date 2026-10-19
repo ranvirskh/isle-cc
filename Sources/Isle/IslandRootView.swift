@@ -493,7 +493,13 @@ struct LiveActivityView: View {
                 PrivacyDots(state: model.privacy)
                 if let p = model.usagePercent {
                     HStack(spacing: 3) {
-                        Text("5h").foregroundStyle(.white.opacity(0.6))
+                        if let reset = model.usageResetsAt {
+                            TimelineView(.periodic(from: .now, by: 30)) { ctx in
+                                Text(ClaudeUsage.hoursLeftLabel(until: reset, now: ctx.date)).foregroundStyle(.white.opacity(0.6))
+                            }
+                        } else {
+                            Text("5h").foregroundStyle(.white.opacity(0.6))
+                        }
                         Text("\(Int(p.rounded()))%").foregroundStyle(Color(severity: LimitSeverity(usedPercent: p)))
                     }
                     .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).fixedSize()
