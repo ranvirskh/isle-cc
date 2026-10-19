@@ -14,10 +14,19 @@ public enum UsageActivity {
     /// Claude's own apps: being in front of one means you are talking to Claude, which spends the limit.
     public static let claudeClientBundleIDs: Set<String> = ["com.anthropic.claudefordesktop"]
 
-    /// True when a Claude client is in front, or a session log was written within `activeWindow`.
-    /// A write time in the future (clock change, odd file) never counts.
-    public static func isActive(lastSessionWrite: Date?, frontmostBundleID: String?, now: Date) -> Bool {
+    /// Terminals and editors that host Claude Code sessions. With one in front and a `claude` process running, Claude is "open"
+    /// even while it sits idle at its prompt.
+    public static let terminalBundleIDs: Set<String> = [
+        "com.apple.Terminal", "com.googlecode.iterm2", "dev.warp.Warp-Stable", "com.mitchellh.ghostty", "net.kovidgoyal.kitty",
+        "org.alacritty", "com.github.wez.wezterm", "co.zeit.hyper", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92",
+        "com.jetbrains.intellij", "com.jetbrains.pycharm", "dev.zed.Zed", "dev.prism.terminal",
+    ]
+
+    /// True when a Claude client is in front, a terminal is in front with a Claude Code process running, or a session log was
+    /// written within `activeWindow`. A write time in the future (clock change, odd file) never counts.
+    public static func isActive(lastSessionWrite: Date?, frontmostBundleID: String?, claudeProcessRunning: Bool = false, now: Date) -> Bool {
         if let id = frontmostBundleID, claudeClientBundleIDs.contains(id) { return true }
+        if claudeProcessRunning, let id = frontmostBundleID, terminalBundleIDs.contains(id) { return true }
         guard let w = lastSessionWrite, w <= now.addingTimeInterval(5) else { return false }
         return now.timeIntervalSince(w) < activeWindow
     }

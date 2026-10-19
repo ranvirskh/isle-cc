@@ -67,4 +67,19 @@ final class UsageActivityTests: XCTestCase {
         XCTAssertEqual(ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(45 * 60), now: now), "45m")
         XCTAssertEqual(ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(-10), now: now), "0m")
     }
+
+    func testTerminalWithClaudeRunningCountsAsOpen() {
+        let now = Date()
+        XCTAssertTrue(UsageActivity.isActive(lastSessionWrite: nil, frontmostBundleID: "com.apple.Terminal", claudeProcessRunning: true, now: now))
+        XCTAssertFalse(UsageActivity.isActive(lastSessionWrite: nil, frontmostBundleID: "com.apple.Terminal", claudeProcessRunning: false, now: now))
+        XCTAssertFalse(UsageActivity.isActive(lastSessionWrite: nil, frontmostBundleID: "com.apple.Safari", claudeProcessRunning: true, now: now))
+    }
+
+    func testLabelChangeDatesAreFewAndOrdered() {
+        let now = Date()
+        let d = ClaudeUsage.labelChangeDates(until: now.addingTimeInterval(5 * 3600), now: now)
+        XCTAssertLessThan(d.count, 125)
+        XCTAssertEqual(d, d.sorted())
+        XCTAssertEqual(d.last, now.addingTimeInterval(5 * 3600))
+    }
 }

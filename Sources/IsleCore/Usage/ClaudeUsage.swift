@@ -72,6 +72,20 @@ public enum ClaudeUsage {
         return tenths % 10 == 0 ? "\(tenths / 10)" : "\(tenths / 10).\(tenths % 10)"
     }
 
+    /// The moments `hoursLeftLabel` changes between now and the reset: each minute in the last hour, otherwise every 6 minutes
+    /// (a tenth of an hour). Lets the view redraw exactly then instead of on a fixed short timer.
+    public static func labelChangeDates(until reset: Date, now: Date) -> [Date] {
+        var dates = [now]
+        var t = reset
+        var out: [Date] = []
+        while t > now, out.count < 120 {
+            out.append(t)
+            t = t.addingTimeInterval(t.timeIntervalSince(now) > 3600 + 360 ? -360 : -60)
+        }
+        dates.append(contentsOf: out.reversed())
+        return dates
+    }
+
     /// Short time until a weekly reset: "3d 4h" from a day up, otherwise the hour/minute label. Keeps the header chip narrow.
     public static func resetLabel(until reset: Date, now: Date) -> String {
         let seconds = reset.timeIntervalSince(now)

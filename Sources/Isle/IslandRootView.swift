@@ -494,7 +494,7 @@ struct LiveActivityView: View {
                 if let p = model.usagePercent {
                     HStack(spacing: 3) {
                         if let reset = model.usageResetsAt {
-                            TimelineView(.periodic(from: .now, by: 30)) { ctx in
+                            TimelineView(.explicit(ClaudeUsage.labelChangeDates(until: reset, now: Date()))) { ctx in
                                 Text(ClaudeUsage.hoursLeftLabel(until: reset, now: ctx.date)).foregroundStyle(.white.opacity(0.6))
                             }
                         } else {

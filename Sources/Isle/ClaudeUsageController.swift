@@ -32,6 +32,7 @@ final class ClaudeUsageController: ObservableObject {
     private let monitor = ClaudeActivityMonitor()
     private var lastSessionWrite: Date?
     private var frontmostID: String?
+    private var claudeProcessRunning = false
     private var expiryTimer: Timer?
     nonisolated private static let interval: TimeInterval = 300
 
@@ -53,6 +54,8 @@ final class ClaudeUsageController: ObservableObject {
 
     private func frontChanged(_ bundleID: String?) {
         frontmostID = bundleID
+        // Look for a running Claude Code only when a terminal comes to the front (no polling).
+        claudeProcessRunning = bundleID.map(UsageActivity.terminalBundleIDs.contains) == true && ClaudeProcessProbe.isRunning()
         recomputeActivity()
     }
 
@@ -67,7 +70,7 @@ final class ClaudeUsageController: ObservableObject {
         expiryTimer?.invalidate()
         expiryTimer = nil
         let now = Date()
-        let active = settings.claudeUsage && UsageActivity.isActive(lastSessionWrite: lastSessionWrite, frontmostBundleID: frontmostID, now: now)
+        let active = settings.claudeUsage && UsageActivity.isActive(lastSessionWrite: lastSessionWrite, frontmostBundleID: frontmostID, claudeProcessRunning: claudeProcessRunning, now: now)
         if let end = UsageActivity.expiry(lastSessionWrite: lastSessionWrite, now: now) {
             let t = Timer(fireAt: end.addingTimeInterval(0.2), interval: 0, target: self, selector: #selector(expiryFired), userInfo: nil, repeats: false)
             RunLoop.main.add(t, forMode: .common)
