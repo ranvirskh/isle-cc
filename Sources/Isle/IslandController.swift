@@ -160,9 +160,14 @@ final class IslandController {
         }
         let download = wings && settings.downloadsIndicator ? env.downloads.summary : nil
         let alert = quiet ? nil : env.usage.pillAlert
-        let usage: Double? = quiet || alert != nil || !env.usage.claudeActive ? nil
-            : AIUsage.pill(claude: env.usage.windows, snapshots: env.agents.snapshots, now: Date())?.percent
-        let resetsAt = usage == nil ? nil : env.usage.windows.first(where: { $0.id == "five_hour" })?.resetsAt
+        // Claude's reading needs Claude to be active; another tool's app (Codex) in front shows its own reading directly.
+        let front = env.usage.frontmostID
+        let reading: AIUsage.Reading? = quiet || alert != nil ? nil
+            : AIUsage.pill(claude: env.usage.windows, snapshots: env.agents.snapshots, frontmostBundleID: front, now: Date())
+        let ownApp = AIUsage.agent(forBundleID: front).map { $0 != .claudeCode } == true
+        let shown = reading.flatMap { env.usage.claudeActive || ($0.agent != .claudeCode && ownApp) ? $0 : nil }
+        let usage: Double? = shown?.percent
+        let resetsAt = shown?.resetsAt
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
                 || privacyState != model.privacy || usage != model.usagePercent || resetsAt != model.usageResetsAt || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }

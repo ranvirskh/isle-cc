@@ -250,15 +250,25 @@ final class AIUsagePillTests: XCTestCase {
         let claude = [window("five_hour", 10, minutes: 300)]
         let codex = snap(.codex, active: -60, limits: [window("primary", 40, minutes: 300), window("secondary", 5, minutes: 10080)])
         let oldClaude = snap(.claudeCode, active: -3600, limits: nil)
-        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [oldClaude, codex], now: now), .init(agent: .codex, percent: 40))
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [oldClaude, codex], now: now), .init(agent: .codex, percent: 40, resetsAt: now.addingTimeInterval(3600)))
         let freshClaude = snap(.claudeCode, active: -10, limits: nil)
-        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], now: now), .init(agent: .claudeCode, percent: 10))
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], now: now), .init(agent: .claudeCode, percent: 10, resetsAt: now.addingTimeInterval(3600)))
+    }
+
+    func testFrontmostAppPicksItsTool() {
+        let claude = [window("five_hour", 10, minutes: 300)]
+        let codex = snap(.codex, active: -3600, limits: [window("primary", 40, minutes: 300)])
+        let freshClaude = snap(.claudeCode, active: -10, limits: nil)
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.openai.codex", now: now)?.agent, .codex)
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.anthropic.claudefordesktop", now: now)?.agent, .claudeCode)
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.apple.Terminal", now: now)?.agent, .claudeCode)
+        XCTAssertNil(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.google.GeminiMacOS", now: now))
     }
 
     func testCodexAloneAndWeeklyOnlyIgnored() {
         let codex = snap(.codex, active: -5, limits: [window("secondary", 5, minutes: 10080)])
         XCTAssertNil(AIUsage.pill(claude: [], snapshots: [codex], now: now))
         let withSession = snap(.codex, active: -5, limits: [window("primary", 22, minutes: 300)])
-        XCTAssertEqual(AIUsage.pill(claude: [], snapshots: [withSession], now: now), .init(agent: .codex, percent: 22))
+        XCTAssertEqual(AIUsage.pill(claude: [], snapshots: [withSession], now: now), .init(agent: .codex, percent: 22, resetsAt: now.addingTimeInterval(3600)))
     }
 }

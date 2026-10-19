@@ -31,7 +31,8 @@ final class ClaudeUsageController: ObservableObject {
     private var lastFetch = Date.distantPast
     private let monitor = ClaudeActivityMonitor()
     private var lastSessionWrite: Date?
-    private var frontmostID: String?
+    /// The app in front; the notch picks that tool's usage. Published so the notch re-evaluates when it changes.
+    @Published private(set) var frontmostID: String?
     private var claudeProcessRunning = false
     private var expiryTimer: Timer?
     nonisolated private static let interval: TimeInterval = 300
