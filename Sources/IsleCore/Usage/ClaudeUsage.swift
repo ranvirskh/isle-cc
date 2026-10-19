@@ -64,26 +64,24 @@ public enum ClaudeUsage {
         return Alert(percent: w.usedPercent, resetsAt: reset)
     }
 
-    /// Hours until a reset for the notch readout: "1.5" for 90 minutes, "5" for five hours; "45m" under an hour.
+    /// Time until a reset for the notch readout, rounded up to the minute: "5h", "2h 40m", "5m".
     public static func hoursLeftLabel(until reset: Date, now: Date) -> String {
-        let minutes = Int((reset.timeIntervalSince(now) / 60).rounded(.up))
-        guard minutes >= 60 else { return "\(max(minutes, 0))m" }
-        let tenths = Int((Double(minutes) / 6).rounded())   // hours in tenths
-        return tenths % 10 == 0 ? "\(tenths / 10)" : "\(tenths / 10).\(tenths % 10)"
+        let minutes = max(0, Int((reset.timeIntervalSince(now) / 60).rounded(.up)))
+        let (h, m) = (minutes / 60, minutes % 60)
+        if h == 0 { return "\(m)m" }
+        return m == 0 ? "\(h)h" : "\(h)h \(m)m"
     }
 
-    /// The moments `hoursLeftLabel` changes between now and the reset: each minute in the last hour, otherwise every 6 minutes
-    /// (a tenth of an hour). Lets the view redraw exactly then instead of on a fixed short timer.
+    /// The minute boundaries between now and the reset, when `hoursLeftLabel` changes. Lets the view redraw exactly then
+    /// (once a minute, at most 301 times over a 5-hour window) instead of on a fixed short timer.
     public static func labelChangeDates(until reset: Date, now: Date) -> [Date] {
-        var dates = [now]
-        var t = reset
         var out: [Date] = []
-        while t > now, out.count < 120 {
+        var t = reset
+        while t > now, out.count < 301 {
             out.append(t)
-            t = t.addingTimeInterval(t.timeIntervalSince(now) > 3600 + 360 ? -360 : -60)
+            t = t.addingTimeInterval(-60)
         }
-        dates.append(contentsOf: out.reversed())
-        return dates
+        return [now] + out.reversed()
     }
 
     /// Short time until a weekly reset: "3d 4h" from a day up, otherwise the hour/minute label. Keeps the header chip narrow.

@@ -220,8 +220,8 @@ final class LiveLayoutTests_Equalizer: XCTestCase {
     func testEqualizerYieldsToUsageReadout() {
         let withEq = LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false)
         let withUsage = LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false, usageLive: true)
-        // Usage replaces the equalizer in the right slot: 12 + 50 = 62 (the cover side is 44).
-        XCTAssertEqual(withUsage, 62)
+        // Usage replaces the equalizer in the right slot: 12 + 76 = 88 (the cover side is 44).
+        XCTAssertEqual(withUsage, 88)
         XCTAssertEqual(withEq, max(LiveLayout.coverSide, 12 + 22))
     }
 }
