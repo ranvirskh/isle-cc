@@ -8,18 +8,19 @@ import IsleCore
 final class ClaudeUsageController: ObservableObject {
     @Published private(set) var windows: [LimitWindow] = []
     @Published private(set) var failed = false
-    /// A terminal or the Claude app is the frontmost app: the 5-hour limit is shown whatever its level.
-    @Published private(set) var codingAppActive = false
+    /// Something is actively spending the Claude usage limit right now (a Claude Code session writing to its log, or the Claude
+    /// app in front): the 5-hour limit is shown whatever its level. See `UsageActivity`.
+    @Published private(set) var claudeActive = false
 
-    /// What the collapsed notch shows for usage: whenever a terminal or the Claude app is in front, at any level.
-    /// In every other app (or with no reading) the notch stays plain black at the size of the real notch.
+    /// What the collapsed notch shows for usage: whenever something is actively using Claude, at any level.
+    /// While nothing is (or with no reading) the notch stays plain black at the size of the real notch.
     var pillPercent: Double? {
-        guard codingAppActive, let five = windows.first(where: { $0.id == "five_hour" }), LimitFormat.isCurrent(five, now: Date()) else { return nil }
+        guard claudeActive, let five = windows.first(where: { $0.id == "five_hour" }), LimitFormat.isCurrent(five, now: Date()) else { return nil }
         return five.usedPercent
     }
 
-    /// 90% or more: percentage and time left on the left of the notch, again only while a terminal or Claude is in front.
-    var pillAlert: ClaudeUsage.Alert? { codingAppActive ? ClaudeUsage.alert(windows, now: Date()) : nil }
+    /// 90% or more: percentage and time left on the left of the notch, again only while something is actively using Claude.
+    var pillAlert: ClaudeUsage.Alert? { claudeActive ? ClaudeUsage.alert(windows, now: Date()) : nil }
 
     private let settings = Settings.shared
     private var timer: Timer?
@@ -27,6 +28,10 @@ final class ClaudeUsageController: ObservableObject {
     private var authFailures = 0
     private var backoffUntil = Date.distantPast
     private var lastFetch = Date.distantPast
+    private let monitor = ClaudeActivityMonitor()
+    private var lastSessionWrite: Date?
+    private var frontmostID: String?
+    private var expiryTimer: Timer?
     nonisolated private static let interval: TimeInterval = 300
 
     func start() {
@@ -35,6 +40,7 @@ final class ClaudeUsageController: ObservableObject {
             let id = (n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
             MainActor.assumeIsolated { self?.frontChanged(id) }
         }
+        monitor.onWrite = { [weak self] date in MainActor.assumeIsolated { self?.sessionWritten(at: date) } }
         frontChanged(NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
         NotificationCenter.default.addObserver(forName: .settingsChanged, object: nil, queue: .main) { [weak self] n in
             MainActor.assumeIsolated {
@@ -45,21 +51,50 @@ final class ClaudeUsageController: ObservableObject {
     }
 
     private func frontChanged(_ bundleID: String?) {
-        let active = bundleID.map { ClaudeUsage.codingBundleIDs.contains($0) } ?? false
-        guard active != codingAppActive else { return }
-        codingAppActive = active
+        frontmostID = bundleID
+        recomputeActivity()
+    }
+
+    private func sessionWritten(at date: Date) {
+        lastSessionWrite = date
+        recomputeActivity()
+    }
+
+    /// Active while a Claude client is in front or a session log was written recently. A single-shot timer flips it off when the
+    /// last write ages out, so there is no polling.
+    private func recomputeActivity() {
+        expiryTimer?.invalidate()
+        expiryTimer = nil
+        let now = Date()
+        let active = settings.claudeUsage && UsageActivity.isActive(lastSessionWrite: lastSessionWrite, frontmostBundleID: frontmostID, now: now)
+        if let end = UsageActivity.expiry(lastSessionWrite: lastSessionWrite, now: now) {
+            let t = Timer(fireAt: end.addingTimeInterval(0.2), interval: 0, target: self, selector: #selector(expiryFired), userInfo: nil, repeats: false)
+            RunLoop.main.add(t, forMode: .common)
+            expiryTimer = t
+        }
+        guard active != claudeActive else { return }
+        claudeActive = active
         guard active else { return }
-        // Switching to a terminal is when the reading matters: a stale "token rejected" wait should not hide it.
+        // Claude just started working: that is when the reading matters, so a stale "token rejected" wait should not hide it.
         if failed { backoffUntil = .distantPast }
         refreshIfStale()
-
     }
+
+    @objc private func expiryFired() { recomputeActivity() }
 
     private func sync() {
         timer?.invalidate()
         timer = nil
         backoffUntil = .distantPast
-        guard settings.claudeUsage else { windows = []; failed = false; return }
+        guard settings.claudeUsage else {
+            windows = []; failed = false
+            monitor.stop()
+            lastSessionWrite = nil
+            recomputeActivity()
+            return
+        }
+        monitor.start()
+        recomputeActivity()
         refresh()
         let t = Timer(timeInterval: Self.interval, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
         t.tolerance = 30

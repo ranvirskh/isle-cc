@@ -206,8 +206,8 @@ struct HeaderView: View {
     }
 
     @ViewBuilder private func rightItems(showReset: Bool, fiveHour: Bool = true) -> some View {
-            if settings.claudeUsage, !ClaudeUsage.displayed(usage.windows, now: Date(), alwaysShowFiveHour: usage.codingAppActive).isEmpty {
-                UsageChip(windows: usage.windows, stale: usage.failed, alwaysShowFiveHour: usage.codingAppActive, showReset: showReset, showFiveHour: fiveHour)
+            if settings.claudeUsage, !ClaudeUsage.displayed(usage.windows, now: Date(), alwaysShowFiveHour: usage.claudeActive).isEmpty {
+                UsageChip(windows: usage.windows, stale: usage.failed, alwaysShowFiveHour: usage.claudeActive, showReset: showReset, showFiveHour: fiveHour)
             } else if settings.agentHeaderChip, settings.agentsEnabled, let top = LimitFormat.highestPercent(agents.snapshots, now: Date()) {
                 Text("\(Int(top.rounded()))%")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))

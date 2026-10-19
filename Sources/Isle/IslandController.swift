@@ -146,7 +146,7 @@ final class IslandController {
         // Without a notch there is nothing to hide inside, so the idle island is invisible: no passive items at all.
         // It only appears when hovered/clicked, or for event pop-ups (volume, song change, task finished).
         let quiet = !model.isNotched
-        // With the live-items setting off, the notch only widens for Claude usage, while a terminal or Claude is in front.
+        // With the live-items setting off, the notch only widens for Claude usage, while something is actively using Claude.
         let wings = settings.liveWings && !quiet
         let media = wings && settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
         let privacy = wings && settings.privacyIndicator && env.privacy.state.isActive
@@ -160,12 +160,12 @@ final class IslandController {
         }
         let download = wings && settings.downloadsIndicator ? env.downloads.summary : nil
         let alert = quiet ? nil : env.usage.pillAlert
-        let usage: Double? = quiet || alert != nil || !env.usage.codingAppActive ? nil
+        let usage: Double? = quiet || alert != nil || !env.usage.claudeActive ? nil
             : AIUsage.pill(claude: env.usage.windows, snapshots: env.agents.snapshots, now: Date())?.percent
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
                 || privacyState != model.privacy || usage != model.usagePercent || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
-        Log.write("live: media=\(media) privacy=\(privacy) charging=\(charging) usage=\(usage.map { String(Int($0)) } ?? "nil") alert=\(alert != nil) active=\(env.usage.codingAppActive) notched=\(model.isNotched)")
+        Log.write("live: media=\(media) privacy=\(privacy) charging=\(charging) usage=\(usage.map { String(Int($0)) } ?? "nil") alert=\(alert != nil) active=\(env.usage.claudeActive) notched=\(model.isNotched)")
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
             model.privacyLive = privacy

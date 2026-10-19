@@ -36,7 +36,7 @@ public enum ClaudeUsage {
     public static let fiveHourShowAbove: Double = 50
 
     /// Windows for the header chip and the notch: the weekly one, and the 5-hour one only when it is above 50%.
-    /// `alwaysShowFiveHour` is true while a terminal or the Claude app is in front: the 5-hour limit is then shown at any level.
+    /// `alwaysShowFiveHour` is true while something is actively using Claude (see `UsageActivity`): the 5-hour limit is then shown at any level.
     public static func displayed(_ windows: [LimitWindow], now: Date, alwaysShowFiveHour: Bool = false) -> [LimitWindow] {
         windows.filter { w in
             guard LimitFormat.isCurrent(w, now: now) else { return false }
@@ -80,15 +80,6 @@ public enum ClaudeUsage {
         let minutes = Int((seconds / 60).rounded(.up))
         return "\(max(1, min(59, minutes)))m"
     }
-
-    /// Apps where seeing the usage limit matters: terminals (AI CLIs run there), AI desktop apps and AI code editors.
-    public static let codingBundleIDs: Set<String> = [
-        "com.apple.Terminal", "com.googlecode.iterm2", "com.mitchellh.ghostty", "dev.warp.Warp-Stable", "net.kovidgoyal.kitty",
-        "org.alacritty", "com.github.wez.wezterm", "co.zeit.hyper", "com.anthropic.claudefordesktop",
-        // Other AI apps and the editors AI agents run in.
-        "com.openai.chat", "com.openai.codex", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92", "dev.zed.Zed",
-        "com.exafunction.windsurf",
-    ]
 
     /// "5h 70% · wk 20%" for the header chip.
     public static func summary(_ windows: [LimitWindow], now: Date) -> String {
