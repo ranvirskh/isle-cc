@@ -63,12 +63,12 @@ final class UsageActivityTests: XCTestCase {
     func testHoursLeftLabel() {
         let now = Date()
         func label(_ minutes: Double) -> String { ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(minutes * 60), now: now) }
-        XCTAssertEqual(label(300), "5h")
-        XCTAssertEqual(label(160), "2h 40m")
-        XCTAssertEqual(label(90), "1h 30m")
-        XCTAssertEqual(label(60), "1h")
+        XCTAssertEqual(label(300), "5")
+        XCTAssertEqual(label(264), "4.4")
+        XCTAssertEqual(label(90), "1.5")
+        XCTAssertEqual(label(60), "1")
+        XCTAssertEqual(label(59), "59m")
         XCTAssertEqual(label(5), "5m")
-        XCTAssertEqual(label(4.2), "5m")
         XCTAssertEqual(ClaudeUsage.hoursLeftLabel(until: now.addingTimeInterval(-10), now: now), "0m")
     }
 
@@ -82,7 +82,7 @@ final class UsageActivityTests: XCTestCase {
     func testLabelChangeDatesAreFewAndOrdered() {
         let now = Date()
         let d = ClaudeUsage.labelChangeDates(until: now.addingTimeInterval(5 * 3600), now: now)
-        XCTAssertLessThan(d.count, 305)
+        XCTAssertLessThan(d.count, 125)
         XCTAssertEqual(d, d.sorted())
         XCTAssertEqual(d.last, now.addingTimeInterval(5 * 3600))
     }

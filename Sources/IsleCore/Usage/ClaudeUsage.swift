@@ -64,22 +64,22 @@ public enum ClaudeUsage {
         return Alert(percent: w.usedPercent, resetsAt: reset)
     }
 
-    /// Time until a reset for the notch readout, rounded up to the minute: "5h", "2h 40m", "5m".
+    /// Time until a reset for the notch readout: decimal hours from one hour up ("5", "4.4", "1.5"), minutes under an hour ("45m").
     public static func hoursLeftLabel(until reset: Date, now: Date) -> String {
         let minutes = max(0, Int((reset.timeIntervalSince(now) / 60).rounded(.up)))
-        let (h, m) = (minutes / 60, minutes % 60)
-        if h == 0 { return "\(m)m" }
-        return m == 0 ? "\(h)h" : "\(h)h \(m)m"
+        guard minutes >= 60 else { return "\(minutes)m" }
+        let tenths = Int((Double(minutes) / 6).rounded())   // hours in tenths
+        return tenths % 10 == 0 ? "\(tenths / 10)" : "\(tenths / 10).\(tenths % 10)"
     }
 
-    /// The minute boundaries between now and the reset, when `hoursLeftLabel` changes. Lets the view redraw exactly then
-    /// (once a minute, at most 301 times over a 5-hour window) instead of on a fixed short timer.
+    /// When `hoursLeftLabel` changes between now and the reset: every minute in the last hour, otherwise every 6 minutes
+    /// (a tenth of an hour). Lets the view redraw exactly then instead of on a fixed short timer.
     public static func labelChangeDates(until reset: Date, now: Date) -> [Date] {
         var out: [Date] = []
         var t = reset
-        while t > now, out.count < 301 {
+        while t > now, out.count < 120 {
             out.append(t)
-            t = t.addingTimeInterval(-60)
+            t = t.addingTimeInterval(t.timeIntervalSince(now) > 3600 + 360 ? -360 : -60)
         }
         return [now] + out.reversed()
     }
