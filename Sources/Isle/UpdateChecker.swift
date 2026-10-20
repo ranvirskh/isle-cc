@@ -27,6 +27,7 @@ final class UpdateChecker: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 24 * 3600, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.check() }
         }
+        timer?.tolerance = 3600   // a daily check needs no precision; lets macOS batch the wake-up
     }
 
     func check() {
