@@ -26,11 +26,13 @@ final class IslandModel: ObservableObject {
     @Published var privacyLive = false
     /// How far the collapsed island extends past each side of the notch.
     var liveSide: CGFloat {
-        LiveLayout.side(mediaLive: mediaLive, privacyIcons: privacyLive ? privacy.active.count : 0, chargingLive: chargingLive, downloadLive: downloadLive, usageLive: usagePercent != nil, usageAlert: usageAlert != nil)
+        LiveLayout.side(mediaLive: mediaLive, privacyIcons: privacyLive ? privacy.active.count : 0, chargingLive: chargingLive, downloadLive: downloadLive, usageLive: usagePercent != nil || geminiTokens != nil, usageAlert: usageAlert != nil)
     }
     /// Highest current Claude usage percentage, set only from the warning level up so the notch stays quiet otherwise.
     @Published var usagePercent: Double?
     /// 5-hour usage at 90% or more: percentage and time left move to the left of the notch.
+    /// Gemini CLI tokens used today, shown while it runs in the terminal in front (Gemini reports no limit to show a percentage).
+    @Published var geminiTokens: Int?
     @Published var usageAlert: ClaudeUsage.Alert?
     /// When the 5-hour window resets; the notch readout shows the hours left until then.
     @Published var usageResetsAt: Date?

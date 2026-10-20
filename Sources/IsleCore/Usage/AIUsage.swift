@@ -26,6 +26,17 @@ public enum AIUsage {
         }
     }
 
+    /// "850", "12.4k", "1.2M": a token count short enough for the notch.
+    public static func compactTokens(_ n: Int) -> String {
+        func trim(_ v: Double, _ unit: String) -> String {
+            let s = String(format: "%.1f", v)
+            return (s.hasSuffix(".0") ? String(s.dropLast(2)) : s) + unit
+        }
+        if n >= 1_000_000 { return trim(Double(n) / 1_000_000, "M") }
+        if n >= 1_000 { return trim(Double(n) / 1_000, "k") }
+        return "\(max(0, n))"
+    }
+
     /// Apps whose own usage Isle cannot read (Gemini publishes no way to check it).
     public static let unreadableBundleIDs: Set<String> = ["com.google.GeminiMacOS"]
 

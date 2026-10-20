@@ -34,6 +34,8 @@ final class ClaudeUsageController: ObservableObject {
     /// The app in front; the notch picks that tool's usage. Published so the notch re-evaluates when it changes.
     @Published private(set) var frontmostID: String?
     private var claudeProcessRunning = false
+    /// A terminal is in front and the Gemini CLI is running in it.
+    @Published private(set) var geminiRunning = false
     private var expiryTimer: Timer?
     nonisolated private static let interval: TimeInterval = 300
 
@@ -57,6 +59,8 @@ final class ClaudeUsageController: ObservableObject {
         frontmostID = bundleID
         // Look for a running Claude Code only when a terminal comes to the front (no polling).
         claudeProcessRunning = bundleID.map(UsageActivity.terminalBundleIDs.contains) == true && ClaudeProcessProbe.isRunning()
+        let inTerminal = bundleID.map(UsageActivity.terminalBundleIDs.contains) == true
+        geminiRunning = inTerminal && (ClaudeProcessProbe.isRunning("gemini") || ClaudeProcessProbe.isRunning("node") && ClaudeProcessProbe.geminiNodeRunning())
         recomputeActivity()
     }
 

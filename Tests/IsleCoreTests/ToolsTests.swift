@@ -236,6 +236,16 @@ final class ResetLabelTests: XCTestCase {
     }
 }
 
+final class CompactTokensTests: XCTestCase {
+    func testCompactTokens() {
+        XCTAssertEqual(AIUsage.compactTokens(0), "0")
+        XCTAssertEqual(AIUsage.compactTokens(850), "850")
+        XCTAssertEqual(AIUsage.compactTokens(12_400), "12.4k")
+        XCTAssertEqual(AIUsage.compactTokens(12_000), "12k")
+        XCTAssertEqual(AIUsage.compactTokens(1_260_000), "1.3M")
+    }
+}
+
 final class AIUsagePillTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_000_000)
     private func window(_ id: String, _ pct: Double, minutes: Int) -> LimitWindow {

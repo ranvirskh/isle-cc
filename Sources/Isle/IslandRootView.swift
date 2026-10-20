@@ -505,6 +505,15 @@ struct LiveActivityView: View {
                     .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                     .frame(maxWidth: 58, alignment: .center)
                 }
+                if let g = model.geminiTokens, model.usagePercent == nil {
+                    HStack(spacing: 3) {
+                        Image(systemName: "sparkles").foregroundStyle(.white.opacity(0.6))
+                        Text(AIUsage.compactTokens(g)).foregroundStyle(.white.opacity(0.9))
+                    }
+                    .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                    .frame(maxWidth: 58, alignment: .center)
+                    .help("Gemini CLI tokens today (Gemini reports no usage limit)")
+                }
                 if !model.mediaLive, let d = model.download {
                     Text(DownloadTracker.format(bytes: d.bytes)).font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()
                         .foregroundStyle(.white.opacity(0.9)).lineLimit(1).fixedSize()

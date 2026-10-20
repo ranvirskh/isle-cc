@@ -168,9 +168,11 @@ final class IslandController {
         let shown = reading.flatMap { env.usage.claudeActive || ($0.agent != .claudeCode && ownApp) ? $0 : nil }
         let usage: Double? = shown?.percent
         let resetsAt = shown?.resetsAt
-        let live = media || privacy || charging || download != nil || usage != nil || alert != nil
+        let geminiTokens: Int? = quiet || !wings || shown != nil || !env.usage.geminiRunning ? nil
+            : env.agents.snapshots.first { $0.agent == .gemini }?.todayTotal.inOut ?? 0
+        let live = media || privacy || charging || download != nil || usage != nil || alert != nil || geminiTokens != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
-                || privacyState != model.privacy || usage != model.usagePercent || resetsAt != model.usageResetsAt || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
+                || privacyState != model.privacy || usage != model.usagePercent || resetsAt != model.usageResetsAt || geminiTokens != model.geminiTokens || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }
         Log.write("live: media=\(media) privacy=\(privacy) charging=\(charging) usage=\(usage.map { String(Int($0)) } ?? "nil") alert=\(alert != nil) active=\(env.usage.claudeActive) notched=\(model.isNotched)")
         withAnimation(Motion.spring(Motion.popup, .media)) {
             model.mediaLive = media
@@ -182,6 +184,7 @@ final class IslandController {
             model.usagePercent = usage
             model.usageAlert = alert
             model.usageResetsAt = resetsAt
+            model.geminiTokens = geminiTokens
             model.liveActive = live
         }
     }
