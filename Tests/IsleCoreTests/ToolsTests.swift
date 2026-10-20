@@ -220,8 +220,8 @@ final class LiveLayoutTests_Equalizer: XCTestCase {
     func testEqualizerYieldsToUsageReadout() {
         let withEq = LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false)
         let withUsage = LiveLayout.side(mediaLive: true, privacyIcons: 0, chargingLive: false, usageLive: true)
-        // Usage replaces the equalizer in the right slot: 12 + 76 = 88 (the cover side is 44).
-        XCTAssertEqual(withUsage, 88)
+        // Usage replaces the equalizer in the right slot: 12 + 50 = 62 (the cover side is 44).
+        XCTAssertEqual(withUsage, 62)
         XCTAssertEqual(withEq, max(LiveLayout.coverSide, 12 + 22))
     }
 }
@@ -263,6 +263,7 @@ final class AIUsagePillTests: XCTestCase {
         XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.anthropic.claudefordesktop", now: now)?.agent, .claudeCode)
         XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.apple.Terminal", now: now)?.agent, .claudeCode)
         XCTAssertNil(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.google.GeminiMacOS", now: now))
+        XCTAssertNil(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.google.Chrome", now: now))
     }
 
     func testCodexAloneAndWeeklyOnlyIgnored() {

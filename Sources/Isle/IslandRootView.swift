@@ -502,7 +502,8 @@ struct LiveActivityView: View {
                         }
                         Text("\(Int(p.rounded()))%").foregroundStyle(Color(severity: LimitSeverity(usedPercent: p)))
                     }
-                    .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).fixedSize()
+                    .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                    .frame(maxWidth: 58, alignment: .center)
                 }
                 if !model.mediaLive, let d = model.download {
                     Text(DownloadTracker.format(bytes: d.bytes)).font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()

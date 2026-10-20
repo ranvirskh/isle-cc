@@ -26,11 +26,16 @@ public enum AIUsage {
         }
     }
 
-    /// Apps whose own usage Isle cannot read (Gemini publishes no way to check it): the notch shows no reading while one is in front.
+    /// Apps whose own usage Isle cannot read (Gemini publishes no way to check it).
     public static let unreadableBundleIDs: Set<String> = ["com.google.GeminiMacOS"]
 
     public static func pill(claude: [LimitWindow], snapshots: [AgentSnapshot], frontmostBundleID: String? = nil, now: Date) -> Reading? {
         if let id = frontmostBundleID, unreadableBundleIDs.contains(id) { return nil }
+        // Per app: only the Claude/Codex apps and terminals or editors that host those tools show a reading. In any other app
+        // (a browser, Gemini) the notch stays at its normal size.
+        if let id = frontmostBundleID {
+            if agent(forBundleID: id) == nil, !UsageActivity.terminalBundleIDs.contains(id) { return nil }
+        } else { return nil }
         let preferred = agent(forBundleID: frontmostBundleID)
         var best: (reading: Reading, activity: Date)?
         var all: [(reading: Reading, activity: Date)] = []

@@ -12,7 +12,7 @@ public enum LiveLayout {
     public static func side(mediaLive: Bool, privacyIcons: Int, chargingLive: Bool, downloadLive: Bool = false, usageLive: Bool = false, usageAlert: Bool = false) -> CGFloat {
         var right: CGFloat = 12
         right += CGFloat(privacyIcons) * 15
-        if usageLive { right += 76 }   // room for "2h 40m 100%"
+        if usageLive { right += 50 }   // room for "5h 100%"; longer countdowns shrink to fit
         // The equalizer yields to the Claude usage readout, which needs the room.
         if mediaLive { if !usageLive { right += 22 } } else if chargingLive || downloadLive { right += downloadLive ? 40 : 30 }
         let left: CGFloat = (mediaLive ? coverSide : 0) + (usageAlert ? alertSide : 0)
