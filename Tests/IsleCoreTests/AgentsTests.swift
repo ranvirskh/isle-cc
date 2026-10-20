@@ -92,7 +92,8 @@ class AgentsFixtureCase: XCTestCase {
             codex: root.appendingPathComponent("codex/sessions"),
             openCode: root.appendingPathComponent("opencode/storage/message"),
             copilot: root.appendingPathComponent("copilot/session-state"),
-            claudeLimitsFile: root.appendingPathComponent("support/Agents/claude-limits.json")
+            claudeLimitsFile: root.appendingPathComponent("support/Agents/claude-limits.json"),
+            gemini: root.appendingPathComponent("gemini/tmp")
         )
         stateFile = root.appendingPathComponent("support/Agents/state.json")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -762,6 +763,10 @@ final class AgentsPrivacyTests: AgentsFixtureCase {
         try write([line(["type": "user.message", "timestamp": iso(t), "data": ["content": secretPrompt, "cwd": "/Users/dev/code/infra", "attachments": [["text": secretFile]]]]),
                    line(["type": "tool.execution_complete", "timestamp": iso(t), "data": ["result": secretTool, "outputTokens": 4]])],
                   to: roots.copilot.appendingPathComponent("cs1/events.jsonl"))
+        try write([line(["id": "g1", "timestamp": iso(t), "type": "user", "content": secretPrompt]),
+                   line(["id": "g2", "timestamp": iso(t.addingTimeInterval(1)), "type": "gemini", "content": secretResponse, "thoughts": secretFile,
+                         "tokens": ["input": 10, "output": 2, "cached": 0, "thoughts": 0, "tool": 0, "total": 12], "model": "gemini-x"])],
+                  to: roots.gemini.appendingPathComponent("proj/chats/session-2026-10-20T00-00-abc.jsonl"))
 
         var logged: [String] = []
         let e = engine()
@@ -771,7 +776,7 @@ final class AgentsPrivacyTests: AgentsFixtureCase {
         e.save()
 
         let snapshots = e.snapshots()
-        XCTAssertEqual(Set(snapshots.map(\.agent)), Set(AgentKind.allCases), "all four fixtures were actually parsed")
+        XCTAssertEqual(Set(snapshots.map(\.agent)), Set(AgentKind.allCases), "all fixtures were actually parsed")
         XCTAssertFalse(notices.isEmpty, "the long tasks produced completion notices")
 
         var surfaces: [String: String] = [:]

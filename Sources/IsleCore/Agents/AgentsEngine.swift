@@ -89,14 +89,17 @@ public final class AgentsEngine {
         public var codex: URL
         public var openCode: URL
         public var copilot: URL
+        /// Gemini CLI: ~/.gemini/tmp/<project>/chats/session-*.jsonl
+        public var gemini: URL
         /// Written by `Isle --statusline-bridge` when the user opted in to the Claude Code status line bridge.
         public var claudeLimitsFile: URL
 
-        public init(claude: URL, codex: URL, openCode: URL, copilot: URL, claudeLimitsFile: URL) {
+        public init(claude: URL, codex: URL, openCode: URL, copilot: URL, claudeLimitsFile: URL, gemini: URL = URL(fileURLWithPath: "/nonexistent/isle-gemini")) {
             self.claude = claude
             self.codex = codex
             self.openCode = openCode
             self.copilot = copilot
+            self.gemini = gemini
             self.claudeLimitsFile = claudeLimitsFile
         }
 
@@ -108,7 +111,8 @@ public final class AgentsEngine {
                 codex: home.appendingPathComponent(".codex/sessions"),
                 openCode: dataHome.appendingPathComponent("opencode/storage/message"),
                 copilot: home.appendingPathComponent(".copilot/session-state"),
-                claudeLimitsFile: support.appendingPathComponent("Agents/claude-limits.json")
+                claudeLimitsFile: support.appendingPathComponent("Agents/claude-limits.json"),
+                gemini: home.appendingPathComponent(".gemini/tmp")
             )
         }
 
@@ -118,6 +122,7 @@ public final class AgentsEngine {
             case .codex: return codex
             case .openCode: return openCode
             case .copilot: return copilot
+            case .gemini: return gemini
             }
         }
     }
@@ -159,7 +164,7 @@ public final class AgentsEngine {
     public init(roots: Roots, stateFile: URL?, calendar: Calendar = .current, completionThreshold: TimeInterval = 120) {
         func canon(_ url: URL) -> URL { URL(fileURLWithPath: Self.canonical(url.path)) }
         self.roots = Roots(claude: canon(roots.claude), codex: canon(roots.codex), openCode: canon(roots.openCode),
-                           copilot: canon(roots.copilot), claudeLimitsFile: canon(roots.claudeLimitsFile))
+                           copilot: canon(roots.copilot), claudeLimitsFile: canon(roots.claudeLimitsFile), gemini: canon(roots.gemini))
         self.stateFile = stateFile
         self.calendar = calendar
         self.tracker = CompletionTracker(threshold: completionThreshold)
@@ -223,6 +228,7 @@ public final class AgentsEngine {
         switch agent {
         case .claudeCode, .codex: return path.hasSuffix(".jsonl")
         case .copilot: return path.hasSuffix(".jsonl")
+        case .gemini: return path.hasSuffix(".jsonl") && path.contains("/chats/session-")
         case .openCode: return path.hasSuffix(".json")
         }
     }
@@ -290,6 +296,7 @@ public final class AgentsEngine {
                 case .claudeCode: records += ClaudeCodeParser.parse(line: line, context: &context, path: path)
                 case .codex: records += CodexParser.parse(line: line, context: &context, path: path)
                 case .copilot: records += CopilotParser.parse(line: line, context: &context, path: path)
+                case .gemini: records += GeminiParser.parse(line: line, context: &context, path: path)
                 case .openCode: break
                 }
             }

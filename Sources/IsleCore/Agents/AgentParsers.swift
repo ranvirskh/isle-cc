@@ -252,6 +252,36 @@ public enum CopilotParser {
     }
 }
 
+public enum GeminiParser {
+    /// One line of ~/.gemini/tmp/<project>/chats/session-*.jsonl. Reads only the type, id, timestamp, model and token counts;
+    /// the prompt and reply text in "content"/"thoughts" are never looked at. A reply is written again when its tool calls are
+    /// added, so each is counted once under its message id.
+    public static func parse(line: Data, context: inout FileContext, path: String) -> [ParsedRecord] {
+        guard let o = object(line) else { return [] }
+        let chats = (path as NSString).deletingLastPathComponent
+        let folder = ((chats as NSString).deletingLastPathComponent as NSString).lastPathComponent
+        if let sid = sanitizedID(o["sessionId"]) { context.sessionID = sid }
+        if context.project == nil, !folder.isEmpty { context.project = folder }
+        guard let type = o["type"] as? String, type == "gemini" || type == "user",
+              let timestamp = AgentDates.parse(o["timestamp"]) else { return [] }
+        let session = context.sessionID ?? sessionID(fromPath: path)
+        var records: [ParsedRecord] = [
+            .activity(ActivityEvent(agent: .gemini, timestamp: timestamp, sessionID: session, project: context.project, signal: .activity)),
+        ]
+        if type == "gemini", let t = o["tokens"] as? [String: Any], let id = sanitizedID(o["id"]) {
+            let input = max(0, Loose.int(t["input"]) ?? 0), cached = max(0, Loose.int(t["cached"]) ?? 0)
+            // Gemini's input count includes the cached part; keep fresh input and cache reads apart like the other agents.
+            let totals = TokenTotals(input: max(0, input - cached), output: max(0, Loose.int(t["output"]) ?? 0),
+                                     cacheRead: cached, reasoning: max(0, Loose.int(t["thoughts"]) ?? 0))
+            if !totals.isZero {
+                records.append(.usage(UsageEvent(agent: .gemini, timestamp: timestamp, model: sanitizedModel(o["model"]) ?? "unknown",
+                                                 tokens: totals, sessionID: session, project: context.project, replaceKey: "gemini|" + id)))
+            }
+        }
+        return records
+    }
+}
+
 public enum ClaudeStatusline {
     /// Reads the documented `rate_limits` object from the JSON Claude Code passes to a status line command
     /// (https://code.claude.com/docs/en/statusline). Present only for Pro and Max subscribers, after the first response.

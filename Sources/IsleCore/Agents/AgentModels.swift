@@ -5,7 +5,7 @@ import Foundation
 // file contents or tool output, and nothing here touches the network.
 
 public enum AgentKind: String, Codable, CaseIterable, Identifiable {
-    case claudeCode, codex, openCode, copilot
+    case claudeCode, codex, openCode, copilot, gemini
 
     public var id: String { rawValue }
 
@@ -15,6 +15,7 @@ public enum AgentKind: String, Codable, CaseIterable, Identifiable {
         case .codex: return "Codex"
         case .openCode: return "OpenCode"
         case .copilot: return "GitHub Copilot"
+        case .gemini: return "Gemini CLI"
         }
     }
 
@@ -24,6 +25,7 @@ public enum AgentKind: String, Codable, CaseIterable, Identifiable {
         case .codex: return "chevron.left.forwardslash.chevron.right"
         case .openCode: return "terminal"
         case .copilot: return "airplane"
+        case .gemini: return "sparkles"
         }
     }
 
@@ -31,7 +33,7 @@ public enum AgentKind: String, Codable, CaseIterable, Identifiable {
     public var hasExplicitTurnEnd: Bool {
         switch self {
         case .claudeCode, .codex: return true
-        case .openCode, .copilot: return false
+        case .openCode, .copilot, .gemini: return false
         }
     }
 }
