@@ -250,9 +250,9 @@ final class AIUsagePillTests: XCTestCase {
         let claude = [window("five_hour", 10, minutes: 300)]
         let codex = snap(.codex, active: -60, limits: [window("primary", 40, minutes: 300), window("secondary", 5, minutes: 10080)])
         let oldClaude = snap(.claudeCode, active: -3600, limits: nil)
-        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [oldClaude, codex], now: now), .init(agent: .codex, percent: 40, resetsAt: now.addingTimeInterval(3600)))
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [oldClaude, codex], frontmostBundleID: "com.apple.Terminal", now: now), .init(agent: .codex, percent: 40, resetsAt: now.addingTimeInterval(3600)))
         let freshClaude = snap(.claudeCode, active: -10, limits: nil)
-        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], now: now), .init(agent: .claudeCode, percent: 10, resetsAt: now.addingTimeInterval(3600)))
+        XCTAssertEqual(AIUsage.pill(claude: claude, snapshots: [freshClaude, codex], frontmostBundleID: "com.apple.Terminal", now: now), .init(agent: .claudeCode, percent: 10, resetsAt: now.addingTimeInterval(3600)))
     }
 
     func testFrontmostAppPicksItsTool() {
@@ -268,8 +268,8 @@ final class AIUsagePillTests: XCTestCase {
 
     func testCodexAloneAndWeeklyOnlyIgnored() {
         let codex = snap(.codex, active: -5, limits: [window("secondary", 5, minutes: 10080)])
-        XCTAssertNil(AIUsage.pill(claude: [], snapshots: [codex], now: now))
+        XCTAssertNil(AIUsage.pill(claude: [], snapshots: [codex], frontmostBundleID: "com.apple.Terminal", now: now))
         let withSession = snap(.codex, active: -5, limits: [window("primary", 22, minutes: 300)])
-        XCTAssertEqual(AIUsage.pill(claude: [], snapshots: [withSession], now: now), .init(agent: .codex, percent: 22, resetsAt: now.addingTimeInterval(3600)))
+        XCTAssertEqual(AIUsage.pill(claude: [], snapshots: [withSession], frontmostBundleID: "com.apple.Terminal", now: now), .init(agent: .codex, percent: 22, resetsAt: now.addingTimeInterval(3600)))
     }
 }
