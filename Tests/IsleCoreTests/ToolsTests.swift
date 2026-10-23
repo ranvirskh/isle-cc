@@ -134,6 +134,8 @@ final class ScriptsAndUpdatesTests: XCTestCase {
         XCTAssertEqual(info?.notes, "notes")
         XCTAssertNil(ReleaseInfo.parse(Data(#"{"tag_name":"v2","html_url":"https://x.y","prerelease":true}"#.utf8)))
         XCTAssertNil(ReleaseInfo.parse(Data("nope".utf8)))
+        XCTAssertNil(ReleaseInfo.parse(Data(#"{"tag_name":"v2","html_url":"file:///etc/hosts"}"#.utf8)))
+        XCTAssertNil(ReleaseInfo.parse(Data(#"{"tag_name":"v2","html_url":"https://evilgithub.com/x"}"#.utf8)))
     }
 
     func testNewHUDKinds() {

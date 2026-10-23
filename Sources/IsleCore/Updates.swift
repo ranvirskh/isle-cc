@@ -22,11 +22,13 @@ public struct ReleaseInfo: Equatable {
     public var pageURL: URL
     public var notes: String
 
+    /// The release page is opened in the browser, so only an https github.com address is accepted.
     public static func parse(_ data: Data) -> ReleaseInfo? {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let tag = obj["tag_name"] as? String,
               let page = (obj["html_url"] as? String).flatMap(URL.init(string:)),
-              (obj["draft"] as? Bool) != true, (obj["prerelease"] as? Bool) != true else { return nil }
+              (obj["draft"] as? Bool) != true, (obj["prerelease"] as? Bool) != true,
+              page.scheme == "https", page.host?.lowercased() == "github.com" else { return nil }
         return ReleaseInfo(version: tag.trimmingCharacters(in: CharacterSet(charactersIn: "vV ")), pageURL: page, notes: (obj["body"] as? String) ?? "")
     }
 }

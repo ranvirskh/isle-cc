@@ -2,7 +2,7 @@ import AppKit
 import IsleCore
 
 /// Claude plan usage (5-hour session and weekly limit) for the signed-in Claude Code account. The one network call in
-/// Isle: GET to Anthropic with the Claude Code token read from the Keychain, every 5 minutes and when the island opens.
+/// Isle: GET to Anthropic with the Claude Code token read from the Keychain, when Claude, Codex or a terminal comes to the front and when the island opens (no timer).
 /// The response is reduced to percentages and reset times; the token is never stored or logged.
 @MainActor
 final class ClaudeUsageController: ObservableObject {
@@ -62,6 +62,8 @@ final class ClaudeUsageController: ObservableObject {
         let inTerminal = bundleID.map(UsageActivity.terminalBundleIDs.contains) == true
         geminiRunning = inTerminal && (ClaudeProcessProbe.isRunning("gemini") || ClaudeProcessProbe.isRunning("node") && ClaudeProcessProbe.geminiNodeRunning())
         recomputeActivity()
+        // No polling: the reading is fetched when Claude, Codex or a terminal comes to the front (and when the island opens).
+        if bundleID.map({ AIUsage.agent(forBundleID: $0) != nil || UsageActivity.terminalBundleIDs.contains($0) }) == true { refreshIfStale() }
     }
 
     private func sessionWritten(at date: Date) {
@@ -81,15 +83,21 @@ final class ClaudeUsageController: ObservableObject {
             RunLoop.main.add(t, forMode: .common)
             expiryTimer = t
         }
+        // Coming back to Claude or a terminal is when the reading matters, so a stale "token rejected" or "rate limited" wait
+        // should not hide it. At most one retry every two minutes, so switching apps cannot hammer the endpoint.
+        if active, failed, Date().timeIntervalSince(lastFetch) > 120 { backoffUntil = .distantPast; refreshIfStale() }
         guard active != claudeActive else { return }
         claudeActive = active
         guard active else { return }
-        // Claude just started working: that is when the reading matters, so a stale "token rejected" wait should not hide it.
         if failed { backoffUntil = .distantPast }
         refreshIfStale()
     }
 
-    @objc private func expiryFired() { recomputeActivity() }
+    @objc private func expiryFired() {
+        // Claude may have been started after the terminal came to the front; look again before deciding it has gone quiet.
+        if frontmostID.map(UsageActivity.terminalBundleIDs.contains) == true { claudeProcessRunning = ClaudeProcessProbe.isRunning() }
+        recomputeActivity()
+    }
 
     private func sync() {
         timer?.invalidate()
@@ -105,10 +113,6 @@ final class ClaudeUsageController: ObservableObject {
         monitor.start()
         recomputeActivity()
         refresh()
-        let t = Timer(timeInterval: Self.interval, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
-        t.tolerance = 30
-        RunLoop.main.add(t, forMode: .common)
-        timer = t
     }
 
     /// Called when the island opens: refreshes only if the last reading is older than a minute.
@@ -190,7 +194,7 @@ final class ClaudeUsageController: ObservableObject {
             case 429:
                 let wait = http?.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init) ?? interval * 2
                 Log.write("usage: rate limited, backing off \(Int(wait)) s")
-                return .rateLimited(min(max(wait, interval), 3600))
+                return .rateLimited(min(max(wait, interval), 600))
             default:
                 Log.write("usage: request failed (HTTP \(http?.statusCode ?? 0))")
                 return .failed

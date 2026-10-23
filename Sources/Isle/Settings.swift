@@ -299,10 +299,16 @@ enum Log {
         let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
         queue.async {
             if let data = line.data(using: .utf8) {
+                // Private to the user, and kept small: one older copy is kept when the log passes 1 MB.
+                if let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? nil, size > 1_000_000 {
+                    let old = url.appendingPathExtension("1")
+                    try? FileManager.default.removeItem(at: old)
+                    try? FileManager.default.moveItem(at: url, to: old)
+                }
                 if let h = try? FileHandle(forWritingTo: url) {
                     h.seekToEndOfFile(); h.write(data); try? h.close()
                 } else {
-                    try? data.write(to: url)
+                    FileManager.default.createFile(atPath: url.path, contents: data, attributes: [.posixPermissions: 0o600])
                 }
             }
         }
