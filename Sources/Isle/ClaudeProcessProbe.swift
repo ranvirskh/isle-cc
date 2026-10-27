@@ -1,4 +1,5 @@
 import Foundation
+import IsleCore
 
 /// Whether a process with this name (default: Claude Code's `claude`) is running. One sysctl call, made only when the frontmost app changes to a terminal,
 /// never on a timer. Only process names are looked at.
@@ -16,17 +17,11 @@ enum ClaudeProcessProbe {
                 let p = raw.loadUnaligned(fromByteOffset: i * stride, as: kinfo_proc.self)
                 let name = withUnsafeBytes(of: p.kp_proc.p_comm) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
                 if name == process { return true }
-                // Claude Code's native build runs as `~/.local/share/claude/versions/2.1.308`, so the kernel names the process
-                // after its version. Those (and only those) are checked further: the executable's path must end in /claude or contain /claude/.
-                if process == "claude", looksLikeVersion(name), executablePath(p.kp_proc.p_pid).map { $0.hasSuffix("/claude") || $0.contains("/claude/") } == true { return true }
+                // Claude Code's native build is named after its version; only those candidates get their path read.
+                if process == "claude", ClaudeProcess.looksLikeVersion(name), ClaudeProcess.matches(name: name, path: executablePath(p.kp_proc.p_pid)) { return true }
             }
             return false
         }
-    }
-
-    private static func looksLikeVersion(_ name: String) -> Bool {
-        guard let first = name.first, first.isNumber else { return false }
-        return name.allSatisfy { $0.isNumber || $0 == "." } && name.contains(".")
     }
 
     /// The path a process was started from (first string of its arguments block).

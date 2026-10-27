@@ -38,6 +38,8 @@ final class ClaudeUsageController: ObservableObject {
     @Published private(set) var geminiRunning = false
     private var expiryTimer: Timer?
     nonisolated private static let interval: TimeInterval = 300
+    /// While Claude is writing to its logs, a reading older than this is refreshed.
+    private static let staleAfter: TimeInterval = 600
 
     func start() {
         let ws = NSWorkspace.shared.notificationCenter
@@ -69,6 +71,8 @@ final class ClaudeUsageController: ObservableObject {
     private func sessionWritten(at date: Date) {
         lastSessionWrite = date
         recomputeActivity()
+        // Claude is working (event-driven, no timer): keep the reading from going stale during a long session.
+        if Date().timeIntervalSince(lastFetch) > Self.staleAfter { refreshIfStale() }
     }
 
     /// Active while a Claude client is in front or a session log was written recently. A single-shot timer flips it off when the

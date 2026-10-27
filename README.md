@@ -4,7 +4,7 @@ A macOS dynamic-island utility for the notch: now playing with synced lyrics, ca
 
 ## Build and install
     ./build.sh            # release build -> build/Isle.app (signed with a stable local identity so permissions persist)
-    ./build.sh --test     # unit tests (259)
+    ./build.sh --test     # unit tests (299)
     ./build.sh --install  # build, copy to /Applications, relaunch
     ./build.sh --debug    # debug build
 
@@ -12,7 +12,7 @@ Developer flags: `--demo` (fake playback), `--simulate-lock` (lock card in a nor
 
 ## Install with Homebrew
     brew install --cask ranvirskh/isle/isle     # or: brew tap ranvirskh/isle, then brew install --cask isle
-    brew upgrade --cask isle                    # after a new release
+    brew upgrade --cask isle                    # after a new release (or use Settings > Install in the app)
 
 The app is signed with a local identity and is not notarized: on first open, right-click it and choose Open.
 
@@ -46,21 +46,24 @@ Off by default. Reads only local metadata from Claude Code, Codex, OpenCode and 
 - **Mirror:** camera preview; the camera runs only while the tab is open (asks for Camera access).
 - **Scripts:** shell commands you save in Settings and run by clicking them; `/bin/zsh`, 30 second limit, output shown in the tab.
 - **Volume and brightness indicator:** replaces the macOS overlay. A session event tap (Accessibility permission) sees the media keys, sets the level (CoreAudio for volume, private DisplayServices for brightness, private CoreBrightness for the keyboard backlight), swallows the key and shows a level bar. Keys it cannot act on pass through to macOS. Step size per press is adjustable. The microphone level is shown when it changes.
-- **Tab order, parallax hover, welcome tour, update check** (a daily request to GitHub's releases API, opt-in, or "Check now").
+- **Tab order, parallax hover, welcome tour, update check** (a daily request to GitHub's releases API, opt-in, or "Check now"). Settings > Install downloads the release zip and its `.sig`, and installs only if the Ed25519 signature matches the developer's public key built into the app, then relaunches.
 - **AirPods banner:** macOS draws it from Notification Center (`com.apple.BluetoothUIServer`) and offers no way to hide it from an app; turn off Bluetooth notifications in System Settings > Notifications (Settings has a button).
 
 - **Global shortcuts:** Control-Option-Space opens or closes the island; Control-Option-1 to 6 pick a tab.
-- **External displays:** the island appears only on the built-in display unless "Show the island on external displays" is on.
+- **External displays:** the island appears only on the built-in display unless "Show the island on every connected external display too" is on; with several displays connected, Settings has an on/off switch per display. On a display without a notch the idle island is invisible and shows no passive items (usage, now playing, charging, downloads); it appears when you hover or click it, and for event pop-ups (volume and brightness, song change, task finished).
 
 ## Animations
 Settings > Animations: master switch, style (Smooth / Snappy / Bouncy / Minimal), speed, and a switch for each group (island opening, content fade, tabs, artwork/media, lyrics, banner flip, button press). Reduce Motion is respected. All timings live in `Sources/IsleCore/Motion.swift`.
 
 ## Claude plan usage
-On by default (Settings > Agents). Shows 5-hour and weekly usage as a header chip. The readout follows activity, not which app is in front: **while anything is actively spending your Claude limit** (a Claude Code session that wrote to its log in the last 90 seconds, in any terminal, editor, or the Claude app's Code tab, even in the background while you work in another app; or the Claude app in front), the 5-hour limit is shown at any level in the chip and the collapsed notch, and from 90% the percentage and time left appear beside the notch. When nothing is using Claude, the notch stays plain black, the weekly limit stays in the chip, and the 5-hour limit appears only once it passes 50%. Activity is detected from file-system events on Claude's session folders (only the time of a write is used; the logs are never opened). It reads your Claude Code sign-in token from the Keychain (macOS asks once) and calls Anthropic's usage endpoint every 5 minutes and when the island opens. Only percentages and reset times are kept; the token is never stored or logged. The endpoint is undocumented and may change.
+On by default (Settings > Agents). Shows 5-hour and weekly usage as a header chip. The readout follows activity, not which app is in front: **while anything is actively spending your Claude limit** (a Claude Code session that wrote to its log in the last 90 seconds, in any terminal, editor, or the Claude app's Code tab, even in the background while you work in another app; or the Claude app in front), the 5-hour limit is shown at any level in the chip and the collapsed notch, and from 90% the percentage and time left appear beside the notch. When nothing is using Claude, the notch stays plain black, the weekly limit stays in the chip, and the 5-hour limit appears only once it passes 50%. Activity is detected from file-system events on Claude's session folders (only the time of a write is used; the logs are never opened). It reads your Claude Code sign-in token from the Keychain (macOS asks once) and calls Anthropic's usage endpoint when Claude, Codex or a terminal comes to the front and when the island opens (no background timer; a rate-limit wait is capped at 10 minutes). The chip shows only while the Claude or Codex app, or a terminal running Claude Code, is in front. Only percentages and reset times are kept; the token is never stored or logged. The endpoint is undocumented and may change.
 
 ## Battery
 Everything is event driven where macOS allows it. The remaining timers all use tolerances so macOS can batch wake-ups:
-clipboard (1 s, only if enabled), system stats (1 s, only while that tab is open; 2 s in Low Power Mode), screen-recording check (3 s; 6 s in Low Power Mode; stopped while the display sleeps), Claude usage (5 min, backs off on 401/429 and in Low Power Mode). Mouse-move events are merged to about 30 per second.
+clipboard (1 s, only if enabled), system stats (1 s, only while that tab is open; 2 s in Low Power Mode), screen-recording check (3 s; 6 s in Low Power Mode; stopped while the display sleeps), Claude usage (no timer: fetched when Claude/Codex/a terminal comes to front or the island opens; backs off on 401/429 and in Low Power Mode), agent-state file (saved at most every 30 s). Mouse-move events are merged to about 30 per second.
+
+## Releasing
+`./release.sh <x.y.z> "notes"` bumps the version, runs the tests, builds, zips, signs the zip with `~/.isle/update-signing.key` (`swift sign-update.swift`), pushes, creates the GitHub release with the zip and its `.sig`, and updates the Homebrew tap. Never publish a zip without its `.sig`: the in-app updater refuses it.
 
 ## Known limits
 - The next/previous controls in System mode depend on the playing app; shuffle is hidden there.

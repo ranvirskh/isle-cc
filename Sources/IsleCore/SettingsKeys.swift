@@ -19,7 +19,7 @@ public enum SettingsKey {
     public static let agentsEnabled = "agentsEnabled"             // default false
     public static let agentsHidden = "agentsHidden"               // [AgentKind.rawValue] switched off
     public static let agentNoticeEnabled = "agentNoticeEnabled"   // default true
-    public static let agentNoticeMinutes = "agentNoticeMinutes"   // default 2
+    public static let agentNoticeMinutes = "agentNoticeMinutes"   // default 1
     public static let claudeUsage = "claudeUsage"                 // fetch Claude plan usage from Anthropic, default true
     public static let agentHeaderChip = "agentHeaderChip"         // default false
     public static let animationPreset = "animationPreset"         // Motion.Preset, default smooth
@@ -82,7 +82,7 @@ public enum SettingsKey {
         agentsEnabled: false,
         agentsHidden: [String](),
         agentNoticeEnabled: true,
-        agentNoticeMinutes: 2.0,
+        agentNoticeMinutes: 1.0,
         claudeUsage: true,
         agentHeaderChip: false,
         animationPreset: Motion.Preset.smooth.rawValue,
@@ -127,7 +127,7 @@ public enum SettingsKey {
 }
 
 public enum IsleInfo {
-    public static let version = "1.3.10"
+    public static let version = "1.3.11"
     public static let bundleID = "local.isle.app"
 
     /// LRCLIB requires clients to identify themselves: name, version, and a homepage or contact.

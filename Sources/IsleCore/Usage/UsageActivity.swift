@@ -39,3 +39,21 @@ public enum UsageActivity {
         return end > now ? end : nil
     }
 }
+
+/// Recognising Claude Code among running processes.
+public enum ClaudeProcess {
+    /// Claude Code's native build runs as `~/.local/share/claude/versions/2.1.308`, so the kernel names the process after
+    /// its version ("2.1.308"), not "claude". Plain dotted numbers are checked further, by the path they were started from.
+    public static func looksLikeVersion(_ name: String) -> Bool {
+        guard let first = name.first, first.isNumber else { return false }
+        return name.allSatisfy { $0.isNumber || $0 == "." } && name.contains(".")
+    }
+
+    /// True for a process called `claude`, or a version-named one started from a path ending in /claude or inside a /claude/ folder.
+    public static func matches(name: String, path: String?) -> Bool {
+        if name == "claude" { return true }
+        guard looksLikeVersion(name), let path else { return false }
+        return path.hasSuffix("/claude") || path.contains("/claude/")
+    }
+}
+

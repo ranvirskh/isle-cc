@@ -12,7 +12,7 @@ public struct CompletionTracker {
         var isOpen: Bool
     }
 
-    /// A task must have run at least this long for a notice. Default 2 minutes.
+    /// A task must have run at least this long for a notice. Default 2 minutes here; the app's setting defaults to 1.
     public var threshold: TimeInterval
     /// Busy but silent for this long reads as "waiting" instead of "working".
     public var waitingAfter: TimeInterval = 20

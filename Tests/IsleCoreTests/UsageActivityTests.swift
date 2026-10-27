@@ -79,6 +79,19 @@ final class UsageActivityTests: XCTestCase {
         XCTAssertFalse(UsageActivity.isActive(lastSessionWrite: nil, frontmostBundleID: "com.apple.Safari", claudeProcessRunning: true, now: now))
     }
 
+    func testClaudeCodeIsRecognisedByNameOrVersionNamedProcess() {
+        XCTAssertTrue(ClaudeProcess.matches(name: "claude", path: nil))
+        // The native build is named after its version and started from ~/.local/bin/claude.
+        XCTAssertTrue(ClaudeProcess.matches(name: "2.1.308", path: "/Users/me/.local/bin/claude"))
+        XCTAssertTrue(ClaudeProcess.matches(name: "2.1.308", path: "/Users/me/.local/share/claude/versions/2.1.308"))
+        // Other version-named programs, and non-version names, do not count.
+        XCTAssertFalse(ClaudeProcess.matches(name: "2.1.308", path: "/usr/local/bin/other"))
+        XCTAssertFalse(ClaudeProcess.matches(name: "2.1.308", path: nil))
+        XCTAssertFalse(ClaudeProcess.matches(name: "node", path: "/Users/me/.local/bin/claude"))
+        XCTAssertFalse(ClaudeProcess.looksLikeVersion("2"))
+        XCTAssertFalse(ClaudeProcess.looksLikeVersion("v2.1"))
+    }
+
     func testLabelChangeDatesAreFewAndOrdered() {
         let now = Date()
         let d = ClaudeUsage.labelChangeDates(until: now.addingTimeInterval(5 * 3600), now: now)

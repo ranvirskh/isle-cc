@@ -243,7 +243,7 @@ struct SettingsView: View {
                     }
                 }
                 Toggle("Show AI plan usage (Claude 5-hour and weekly; Codex and others when they report limits) in the header and notch", isOn: binding({ settings.claudeUsage }, { settings.claudeUsage = $0 }))
-                Text("Reads your Claude Code sign-in token from the Keychain and asks Anthropic for your usage every 5 minutes. Nothing else is sent or stored.")
+                Text("Reads your Claude Code sign-in token from the Keychain and asks Anthropic for your usage when Claude, Codex or a terminal comes to the front or the island opens (no background polling). Nothing else is sent or stored.")
                     .font(.caption).foregroundStyle(.secondary)
                 if settings.agentsEnabled {
                     let detected = env.agents.detected()
