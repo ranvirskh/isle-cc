@@ -1,3 +1,4 @@
+import CryptoKit
 import XCTest
 @testable import IsleCore
 
@@ -134,6 +135,21 @@ final class ScriptsAndUpdatesTests: XCTestCase {
         XCTAssertEqual(info?.notes, "notes")
         XCTAssertNil(ReleaseInfo.parse(Data(#"{"tag_name":"v2","html_url":"https://x.y","prerelease":true}"#.utf8)))
         XCTAssertNil(ReleaseInfo.parse(Data("nope".utf8)))
+        let withAssets = #"{"tag_name":"v3","html_url":"https://github.com/o/r/releases/tag/v3","assets":[{"name":"Isle-3.zip.sig","browser_download_url":"https://github.com/o/r/releases/download/v3/Isle-3.zip.sig"},{"name":"Isle-3.zip","browser_download_url":"https://github.com/o/r/releases/download/v3/Isle-3.zip"}]}"#
+        let rel = ReleaseInfo.parse(Data(withAssets.utf8))
+        XCTAssertEqual(rel?.zipURL?.lastPathComponent, "Isle-3.zip")
+        XCTAssertEqual(rel?.signatureURL?.lastPathComponent, "Isle-3.zip.sig")
+        let offHost = #"{"tag_name":"v3","html_url":"https://github.com/o/r","assets":[{"name":"Isle-3.zip","browser_download_url":"https://evil.example/Isle-3.zip"}]}"#
+        XCTAssertNil(ReleaseInfo.parse(Data(offHost.utf8))?.zipURL)
+        // Signatures: a real one verifies, a tampered payload or a different key does not.
+        let key = Curve25519.Signing.PrivateKey()
+        let pub = key.publicKey.rawRepresentation.base64EncodedString()
+        let payload = Data("update bytes".utf8)
+        let sig = Data(((try? key.signature(for: payload)) ?? Data()).base64EncodedString().utf8)
+        XCTAssertTrue(UpdateSignature.isValid(signature: sig, for: payload, publicKey: pub))
+        XCTAssertFalse(UpdateSignature.isValid(signature: sig, for: Data("tampered".utf8), publicKey: pub))
+        XCTAssertFalse(UpdateSignature.isValid(signature: sig, for: payload))
+        XCTAssertFalse(UpdateSignature.isValid(signature: Data("garbage".utf8), for: payload, publicKey: pub))
         XCTAssertNil(ReleaseInfo.parse(Data(#"{"tag_name":"v2","html_url":"file:///etc/hosts"}"#.utf8)))
         XCTAssertNil(ReleaseInfo.parse(Data(#"{"tag_name":"v2","html_url":"https://evilgithub.com/x"}"#.utf8)))
     }

@@ -43,6 +43,7 @@ public enum SettingsKey {
     public static let liveWings = "liveWings"                     // widen the notch for live items (cover, charging, ...), default false
     public static let liveActivity = "liveActivity"               // cover + equalizer beside the notch while playing, default true
     public static let songBanner = "songBanner"                   // default true
+    public static let hiddenDisplays = "hiddenDisplays"           // comma-separated display UUIDs the island is hidden on
     public static let externalDisplays = "externalDisplays"       // show the island on external displays, default false
     public static let hudReplacement = "hudReplacement"           // volume / brightness HUD in the island (needs Accessibility), default false
     public static let hudStepPercent = "hudStepPercent"           // percentage points per volume / brightness key press, default 6
@@ -103,6 +104,7 @@ public enum SettingsKey {
         liveActivity: true,
         songBanner: true,
         externalDisplays: false,
+        hiddenDisplays: "",
         hudReplacement: false,
         hudStepPercent: HUDStep.defaultPercent,
         calendarTabEnabled: false,
@@ -125,7 +127,7 @@ public enum SettingsKey {
 }
 
 public enum IsleInfo {
-    public static let version = "1.3.9"
+    public static let version = "1.3.10"
     public static let bundleID = "local.isle.app"
 
     /// LRCLIB requires clients to identify themselves: name, version, and a homepage or contact.

@@ -20,6 +20,11 @@ final class AgentsController: ObservableObject {
     private var flushScheduled = false
     private var shownNotices: Set<String> = []
     private var running = false
+    /// The state file is large; writing it after every burst of log activity wastes CPU, so it is saved at most this often
+    /// (and always on quit). Only touched on `queue`.
+    private var lastSave = Date.distantPast
+    private var saveWork: DispatchWorkItem?
+    private static let saveInterval: TimeInterval = 30
     private var observer: NSObjectProtocol?
 
     func start() {
@@ -133,7 +138,7 @@ final class AgentsController: ObservableObject {
         queue.async { [weak self] in
             var notices: [CompletionNotice] = []
             for p in batch { notices += engine.ingest(path: p) }
-            engine.save()
+            self?.saveThrottled(engine)
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     self?.publish()
@@ -141,6 +146,18 @@ final class AgentsController: ObservableObject {
                     self?.scheduleDeadline()
                 }
             }
+        }
+    }
+
+    private func saveThrottled(_ engine: AgentsEngine) {
+        if Date().timeIntervalSince(lastSave) >= Self.saveInterval {
+            saveWork?.cancel(); saveWork = nil
+            lastSave = Date()
+            engine.save()
+        } else if saveWork == nil {
+            let w = DispatchWorkItem { [weak self] in self?.saveWork = nil; self?.lastSave = Date(); engine.save() }
+            saveWork = w
+            queue.asyncAfter(deadline: .now() + Self.saveInterval, execute: w)
         }
     }
 

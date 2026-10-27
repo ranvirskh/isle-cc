@@ -221,6 +221,7 @@ final class IslandController {
 
     /// The island lives on the built-in display, and on external displays only when the setting is on.
     static func isAllowed(_ screen: NSScreen) -> Bool {
+        if let uuid = screen.displayUUID, Settings.shared.hiddenDisplays.contains(uuid) { return false }
         if Settings.shared.externalDisplays { return true }
         guard let id = screen.displayID else { return false }
         return CGDisplayIsBuiltin(id) != 0
@@ -569,6 +570,11 @@ final class IslandController {
 }
 
 extension NSScreen {
+    /// Stable across reconnects (the display ID is not), so a per-display choice sticks to the monitor.
+    var displayUUID: String? {
+        guard let id = displayID, let u = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue() else { return nil }
+        return CFUUIDCreateString(nil, u) as String?
+    }
     var displayID: CGDirectDisplayID? { (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value }
     var uuidString: String? {
         guard let id = displayID, let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue() else { return nil }

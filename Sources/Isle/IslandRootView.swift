@@ -269,6 +269,7 @@ struct TabButton: View {
         .buttonStyle(PressStyle())
         .help(title)
         .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
         .onHover { hover = $0 }
         .animation(Motion.ease(0.15, .tabs), value: selected)
         .animation(Motion.ease(0.15, .tabs), value: hover)
@@ -743,6 +744,10 @@ struct HUDBar: View {
             }
         }
         .animation(.smooth(duration: 0.22), value: hud.shownLevel)
+        // One element for VoiceOver: "Volume, 40 percent" (or "muted"), instead of an icon, a title and a bare bar.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(hud.title)
+        .accessibilityValue(hud.muted ? "Muted" : "\(Int((hud.level * 100).rounded())) percent")
         .padding(.horizontal, flare + 18)
         .padding(.top, model.isNotched ? model.collapsedSize.height + 2 : 10)
         .padding(.bottom, 12)

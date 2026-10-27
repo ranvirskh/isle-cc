@@ -66,7 +66,9 @@ public final class ShelfStore {
     /// The file to show, drag or open for an item; nil when it has gone missing.
     public func url(for item: ShelfItem) -> URL? {
         if let relative = item.storedRelativePath {
-            let url = directory.appendingPathComponent(relative)
+            let url = directory.appendingPathComponent(relative).standardizedFileURL
+            // A tampered index must not point outside the shelf folder (e.g. "../../.ssh/id_rsa").
+            guard url.path.hasPrefix(directory.standardizedFileURL.path + "/") else { return nil }
             return fileManager.fileExists(atPath: url.path) ? url : nil
         }
         if let bookmark = item.referenceBookmark {

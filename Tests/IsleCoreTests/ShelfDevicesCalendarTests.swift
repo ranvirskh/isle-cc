@@ -37,6 +37,15 @@ final class ShelfStoreTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: url).count, 10)
     }
 
+    func testIndexCannotPointOutsideTheShelfFolder() throws {
+        let outside = try makeFile("secret.txt")
+        let store = ShelfStore(directory: shelfDir)
+        let relative = "../" + outside.deletingLastPathComponent().lastPathComponent + "/secret.txt"
+        let sneaky = ShelfItem(id: "x", name: "secret.txt", storedRelativePath: relative, referencePath: nil,
+                               referenceBookmark: nil, addedAt: Date(), isDirectory: false)
+        XCTAssertNil(store.url(for: sneaky))
+    }
+
     func testSameNameTwiceDoesNotCollide() throws {
         let a = try makeFile("a.txt")
         let store = ShelfStore(directory: shelfDir)

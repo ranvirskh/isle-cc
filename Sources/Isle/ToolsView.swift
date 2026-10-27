@@ -38,5 +38,6 @@ struct ToolsView: View {
                 .background(Capsule().fill(Color.white.opacity(selected ? 0.28 : 0.1)))
         }
         .buttonStyle(PressStyle())
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

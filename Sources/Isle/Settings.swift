@@ -159,6 +159,11 @@ final class Settings: ObservableObject {
         get { IslandTheme(rawValue: d.string(forKey: SettingsKey.theme) ?? "") ?? .classic }
         set { set(newValue.rawValue, SettingsKey.theme) }
     }
+    /// UUIDs of displays the island is switched off on.
+    var hiddenDisplays: Set<String> {
+        get { Set((d.string(forKey: SettingsKey.hiddenDisplays) ?? "").split(separator: ",").map(String.init)) }
+        set { set(newValue.sorted().joined(separator: ","), SettingsKey.hiddenDisplays) }
+    }
     var externalDisplays: Bool {
         get { d.bool(forKey: SettingsKey.externalDisplays) }
         set { set(newValue, SettingsKey.externalDisplays) }

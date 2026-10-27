@@ -34,7 +34,7 @@ final class IslandHub {
             MainActor.assumeIsolated { self?.sync() }
         }
         nc.addObserver(forName: .settingsChanged, object: nil, queue: .main) { [weak self] n in
-            MainActor.assumeIsolated { if (n.object as? String) == SettingsKey.externalDisplays { self?.sync() } }
+            MainActor.assumeIsolated { if let k = n.object as? String, k == SettingsKey.externalDisplays || k == SettingsKey.hiddenDisplays { self?.sync() } }
         }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.sync() }

@@ -64,6 +64,8 @@ struct ArtworkView: View {
         .animation(Motion.spring(Motion.artworkFlip, .media), value: media.artwork == nil)
         .onTapGesture { media.openSourceApp() }
         .accessibilityLabel("Album artwork")
+        .accessibilityHint("Opens the app that is playing")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -368,7 +370,7 @@ struct AgendaView: View {
                 } else {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 5) {
-                            ForEach(calendar.agenda.rows) { row in AgendaRow(row: row).onTapGesture { calendar.openCalendarApp() } }
+                            ForEach(calendar.agenda.rows) { row in AgendaRow(row: row).onTapGesture { calendar.openCalendarApp() }.accessibilityAddTraits(.isButton).accessibilityHint("Opens Calendar") }
                         }
                     }
                 }

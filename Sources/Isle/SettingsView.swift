@@ -92,6 +92,17 @@ struct SettingsView: View {
                 HUDSettingsRow(hud: env.hud, settings: settings)
                 Toggle("Show the island on every connected external display too (off: built-in display only)", isOn: binding({ settings.externalDisplays }, { settings.externalDisplays = $0 }))
                 Toggle("Battery in the header", isOn: binding({ settings.batteryInHeader }, { settings.batteryInHeader = $0 }))
+                if NSScreen.screens.count > 1 {
+                    ForEach(NSScreen.screens, id: \.displayUUID) { screen in
+                        if let uuid = screen.displayUUID {
+                            Toggle("Island on \(screen.localizedName)", isOn: binding({ !settings.hiddenDisplays.contains(uuid) }, { on in
+                                var hidden = settings.hiddenDisplays
+                                if on { hidden.remove(uuid) } else { hidden.insert(uuid) }
+                                settings.hiddenDisplays = hidden
+                            }))
+                        }
+                    }
+                }
             }
 
             Section("Weather") {
@@ -390,7 +401,15 @@ struct UpdatesRow: View {
             case .checking: Text("Checking…").foregroundStyle(.secondary)
             case .upToDate: Text("You have the latest version").foregroundStyle(.secondary)
             case .failed: Text("Could not check").foregroundStyle(.secondary)
-            case .available(let info): Button("Version \(info.version) is available") { updates.openRelease(info) }
+            case .installing: Text("Installing…").foregroundStyle(.secondary)
+            case .installFailed(let why): Text(why).foregroundStyle(.secondary).lineLimit(2)
+            case .available(let info):
+                if info.zipURL != nil, info.signatureURL != nil {
+                    Button("Install version \(info.version)") { updates.install(info) }
+                    Button("Release page") { updates.openRelease(info) }
+                } else {
+                    Button("Version \(info.version) is available") { updates.openRelease(info) }
+                }
             }
             Button("Check now") { updates.check() }
         }

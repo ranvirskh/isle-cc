@@ -40,7 +40,7 @@ final class ScriptsController: ObservableObject {
                 DispatchQueue.main.async { MainActor.assumeIsolated { self?.finish(name, "Could not start: \(error.localizedDescription)", false) } }
                 return
             }
-            let killer = DispatchWorkItem { if p.isRunning { p.terminate() } }
+            let killer = DispatchWorkItem { if p.isRunning { Self.stopTree(p) } }
             DispatchQueue.global().asyncAfter(deadline: .now() + Self.timeout, execute: killer)
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             p.waitUntilExit()
@@ -56,5 +56,15 @@ final class ScriptsController: ObservableObject {
         runningID = nil; process = nil
     }
 
-    func stop() { process?.terminate() }
+    func stop() { if let p = process { Self.stopTree(p) } }
+
+    /// Ends the shell and the commands it started (terminating only the shell would leave them running).
+    nonisolated private static func stopTree(_ p: Process) {
+        let kill = Process()
+        kill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        kill.arguments = ["-TERM", "-P", String(p.processIdentifier)]
+        try? kill.run()
+        kill.waitUntilExit()
+        p.terminate()
+    }
 }
