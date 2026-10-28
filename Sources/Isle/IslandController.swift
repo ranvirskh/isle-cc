@@ -132,6 +132,8 @@ final class IslandController {
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.agents.$snapshots.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
+        env.antigravity.$todayTokens.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.usage.objectWillChange
             .sink { [weak self] _ in DispatchQueue.main.async { MainActor.assumeIsolated { self?.updateLive() } } }.store(in: &cancellables)
         updateLive()
@@ -168,8 +170,11 @@ final class IslandController {
         let shown = reading.flatMap { env.usage.claudeActive || ($0.agent != .claudeCode && ownApp) ? $0 : nil }
         let usage: Double? = shown?.percent
         let resetsAt = shown?.resetsAt
-        let geminiTokens: Int? = quiet || !wings || shown != nil || !env.usage.geminiRunning ? nil
+        // Gemini CLI in the front terminal, or the Gemini (Antigravity) app in front: a token count, as Gemini reports no limit.
+        let geminiCLI: Int? = quiet || !wings || shown != nil || !env.usage.geminiRunning ? nil
             : env.agents.snapshots.first { $0.agent == .gemini }?.todayTotal.inOut ?? 0
+        let geminiApp: Int? = quiet || shown != nil || front != AntigravityController.bundleID ? nil : env.antigravity.todayTokens
+        let geminiTokens = geminiCLI ?? geminiApp
         let live = media || privacy || charging || download != nil || usage != nil || alert != nil || geminiTokens != nil
         guard media != model.mediaLive || privacy != model.privacyLive || live != model.liveActive
                 || privacyState != model.privacy || usage != model.usagePercent || resetsAt != model.usageResetsAt || geminiTokens != model.geminiTokens || alert != model.usageAlert || charging != model.chargingLive || battery != model.battery || download != model.download else { return }

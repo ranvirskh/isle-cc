@@ -513,7 +513,7 @@ struct LiveActivityView: View {
                     }
                     .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                     .frame(maxWidth: 58, alignment: .center)
-                    .help("Gemini CLI tokens today (Gemini reports no usage limit)")
+                    .help("Gemini tokens used today (Gemini CLI, or Antigravity in the Gemini app); Gemini reports no usage limit")
                 }
                 if !model.mediaLive, let d = model.download {
                     Text(DownloadTracker.format(bytes: d.bytes)).font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()

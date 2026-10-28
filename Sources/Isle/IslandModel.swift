@@ -116,6 +116,7 @@ final class AppEnv: ObservableObject {
     let devices = DevicesController()
     let agents = AgentsController()
     let usage = ClaudeUsageController()
+    let antigravity = AntigravityController()
     let privacy = PrivacyMonitor()
     let downloads = DownloadsController()
     let weather = WeatherController()
