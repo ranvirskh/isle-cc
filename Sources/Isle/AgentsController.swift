@@ -91,10 +91,7 @@ final class AgentsController: ObservableObject {
 
     private func startWatching(roots: AgentsEngine.Roots) {
         stopWatching()
-        var paths: [String] = []
-        for agent in AgentKind.allCases where FileManager.default.fileExists(atPath: roots.root(for: agent).path) {
-            paths.append(roots.root(for: agent).path)
-        }
+        var paths = roots.watchPaths
         let limitsDir = roots.claudeLimitsFile.deletingLastPathComponent().path
         if FileManager.default.fileExists(atPath: limitsDir) { paths.append(limitsDir) }
         guard !paths.isEmpty else { return }
@@ -217,10 +214,7 @@ final class AgentsController: ObservableObject {
     /// Agents found on this Mac (for the Settings list), regardless of the per-agent toggle.
     func detected() -> [AgentKind] {
         let roots = AgentsEngine.Roots.standard(support: Paths.support)
-        return AgentKind.allCases.filter {
-            var isDir: ObjCBool = false
-            return FileManager.default.fileExists(atPath: roots.root(for: $0).path, isDirectory: &isDir) && isDir.boolValue
-        }
+        return AgentKind.allCases.filter(roots.exists)
     }
 
     func reset() {

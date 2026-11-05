@@ -76,7 +76,7 @@ final class IslandModel: ObservableObject {
 
     /// Song-change banner: a small tab under the notch with a flipping cover, title and artist.
     var bannerSize: CGSize {
-        CGSize(width: max(collapsedSize.width + 60, 250), height: (screen.hasNotch ? collapsedSize.height : 8) + 38)
+        CGSize(width: max(collapsedSize.width + 130, 330), height: (screen.hasNotch ? collapsedSize.height : 8) + 66)
     }
 
     /// Height of the strip level with the notch where the header lives.

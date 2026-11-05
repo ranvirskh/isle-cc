@@ -92,11 +92,11 @@ final class HUDTests: XCTestCase {
     }
 
     func testSymbolsAndLevel() {
-        XCTAssertEqual(HUDState(kind: .volume, level: 0.2).symbol, "speaker.wave.1.fill")
-        XCTAssertEqual(HUDState(kind: .volume, level: 0.9).symbol, "speaker.wave.3.fill")
-        XCTAssertEqual(HUDState(kind: .volume, level: 0.5, muted: true).symbol, "speaker.slash.fill")
+        XCTAssertEqual(HUDState(kind: .volume, level: 0.2).symbol, "speaker.wave.1.circle.fill")
+        XCTAssertEqual(HUDState(kind: .volume, level: 0.9).symbol, "speaker.wave.3.circle.fill")
+        XCTAssertEqual(HUDState(kind: .volume, level: 0.5, muted: true).symbol, "speaker.slash.circle.fill")
         XCTAssertEqual(HUDState(kind: .volume, level: 0.5, muted: true).shownLevel, 0)
-        XCTAssertEqual(HUDState(kind: .brightness, level: 0.8).symbol, "sun.max.fill")
+        XCTAssertEqual(HUDState(kind: .brightness, level: 0.8).symbol, "sun.max.circle.fill")
         XCTAssertEqual(HUDState(kind: .brightness, level: 3).level, 1)
     }
 }

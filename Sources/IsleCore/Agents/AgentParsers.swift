@@ -183,12 +183,21 @@ public enum OpenCodeParser {
     /// The file is rewritten as the message streams, so its usage REPLACES what was counted for it before.
     public static func parse(messageFile data: Data, path: String) -> [ParsedRecord] {
         guard let o = object(data) else { return [] }
+        let folder = ((path as NSString).deletingLastPathComponent as NSString).lastPathComponent
+        return records(from: o, session: sanitizedID(o["sessionID"]) ?? folder, messageID: sanitizedID(o["id"]) ?? sessionID(fromPath: path), directory: nil)
+    }
+
+    /// One row of OpenCode 2's database (see `OpenCodeDatabase`); the message JSON carries no id or session of its own.
+    public static func parse(databaseRow row: OpenCodeDatabase.Row) -> [ParsedRecord] {
+        guard let o = object(row.json), let session = sanitizedID(row.sessionID), let id = sanitizedID(row.messageID) else { return [] }
+        return records(from: o, session: session, messageID: id, directory: row.directory)
+    }
+
+    private static func records(from o: [String: Any], session: String, messageID: String, directory: String?) -> [ParsedRecord] {
         let time = o["time"] as? [String: Any]
         guard let created = AgentDates.parse(time?["created"]) else { return [] }
-        let folder = ((path as NSString).deletingLastPathComponent as NSString).lastPathComponent
-        let session = sanitizedID(o["sessionID"]) ?? folder
         let pathInfo = o["path"] as? [String: Any]
-        let project = AgentDates.projectName(fromPath: (pathInfo?["root"] as? String) ?? (pathInfo?["cwd"] as? String))
+        let project = AgentDates.projectName(fromPath: (pathInfo?["root"] as? String) ?? (pathInfo?["cwd"] as? String) ?? directory)
         let completed = AgentDates.parse(time?["completed"])
         var records: [ParsedRecord] = [
             .activity(ActivityEvent(agent: .openCode, timestamp: completed ?? created, sessionID: session, project: project, signal: .activity)),
@@ -202,7 +211,6 @@ public enum OpenCodeParser {
             cacheWrite: max(0, Loose.int(cache?["write"]) ?? 0),
             reasoning: max(0, Loose.int(tokens["reasoning"]) ?? 0)
         )
-        let messageID = sanitizedID(o["id"]) ?? sessionID(fromPath: path)
         let model = sanitizedModel(o["modelID"]) ?? sanitizedModel((o["model"] as? [String: Any])?["modelID"]) ?? "unknown"
         if !totals.isZero {
             records.append(.usage(UsageEvent(agent: .openCode, timestamp: created, model: model, tokens: totals,

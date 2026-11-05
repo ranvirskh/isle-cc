@@ -22,12 +22,12 @@ public struct HUDState: Equatable {
 
     public var symbol: String {
         switch kind {
-        case .brightness: return level < 0.5 ? "sun.min.fill" : "sun.max.fill"
+        case .brightness: return level < 0.5 ? "sun.min.circle.fill" : "sun.max.circle.fill"
         case .keyboard: return level <= 0 ? "light.min" : "light.max"
         case .microphone: return level <= 0 ? "mic.slash.fill" : "mic.fill"
         case .volume:
-            if muted || level <= 0 { return "speaker.slash.fill" }
-            return level < 1.0 / 3 ? "speaker.wave.1.fill" : level < 2.0 / 3 ? "speaker.wave.2.fill" : "speaker.wave.3.fill"
+            if muted || level <= 0 { return "speaker.slash.circle.fill" }
+            return level < 1.0 / 3 ? "speaker.wave.1.circle.fill" : level < 2.0 / 3 ? "speaker.wave.2.circle.fill" : "speaker.wave.3.circle.fill"
         }
     }
 

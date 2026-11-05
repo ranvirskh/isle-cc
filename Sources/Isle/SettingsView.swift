@@ -220,6 +220,9 @@ struct SettingsView: View {
                 UpdatesRow(updates: env.updates, settings: settings)
             }
 
+            Section("Diagnostics") {
+                DiagnosticsRow()
+            }
             Section("Pop-ups") {
                 Toggle("Bluetooth device connected", isOn: binding({ settings.popupBluetooth }, { settings.popupBluetooth = $0 }))
                 Toggle("Power adapter connected / disconnected", isOn: binding({ settings.popupPower }, { settings.popupPower = $0 }))
@@ -245,6 +248,7 @@ struct SettingsView: View {
                 Toggle("Show AI plan usage (Claude 5-hour and weekly; Codex and others when they report limits) in the header and notch", isOn: binding({ settings.claudeUsage }, { settings.claudeUsage = $0 }))
                 Text("Reads your Claude Code sign-in token from the Keychain and asks Anthropic for your usage when Claude, Codex or a terminal comes to the front or the island opens (no background polling). Nothing else is sent or stored.")
                     .font(.caption).foregroundStyle(.secondary)
+                SignInHint(usage: env.usage)
                 if settings.agentsEnabled {
                     let detected = env.agents.detected()
                     if detected.isEmpty {

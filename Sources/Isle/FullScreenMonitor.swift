@@ -1,52 +1,57 @@
 import AppKit
 import IsleCore
 
-/// Tracks whether the frontmost app is in a full-screen Space on the island's display. Checked only when the
-/// active app or Space changes, never on a timer.
+/// Tracks which displays have the frontmost app in a full-screen Space. Checked only when the active app, Space or
+/// display layout changes, never on a timer.
 @MainActor
 final class FullScreenMonitor: ObservableObject {
-    @Published private(set) var isFullScreen = false
+    @Published private(set) var displays: Set<CGDirectDisplayID> = []
     private var observers: [NSObjectProtocol] = []
     private var pending: DispatchWorkItem?
 
-    func start(screen: @escaping () -> ScreenInfo) {
+    func isFullScreen(_ display: CGDirectDisplayID?) -> Bool { display.map(displays.contains) ?? false }
+
+    func start() {
         let ws = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.activeSpaceDidChangeNotification, NSWorkspace.didActivateApplicationNotification] {
             observers.append(ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.schedule(screen) }
+                MainActor.assumeIsolated { self?.schedule() }
             })
         }
         observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.schedule(screen) }
+            MainActor.assumeIsolated { self?.schedule() }
         })
-        schedule(screen)
+        schedule()
     }
 
     /// Space switches animate; look again once the new Space has settled.
-    private func schedule(_ screen: @escaping () -> ScreenInfo) {
+    private func schedule() {
         pending?.cancel()
-        evaluate(screen())
-        let w = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.evaluate(screen()) } }
+        evaluate()
+        let w = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.evaluate() } }
         pending = w
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: w)
     }
 
-    private func evaluate(_ info: ScreenInfo) {
+    private func evaluate() {
         let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
-        let windows: [FullScreenDetector.Window] = list.compactMap { w in
+        let all: [FullScreenDetector.Window] = list.compactMap { w in
             guard let pid = w[kCGWindowOwnerPID as String] as? Int32, let layer = w[kCGWindowLayer as String] as? Int,
                   let dict = w[kCGWindowBounds as String] as? NSDictionary, let rect = CGRect(dictionaryRepresentation: dict) else { return nil }
             return .init(ownerPID: pid, layer: layer, frame: rect)
         }
-        // The menu bar window (level 24) sits at the top of the display while it is showing and is moved away in full screen.
-        let menuBarVisible = list.contains { w in
-            guard (w[kCGWindowLayer as String] as? Int) == 24,
-                  let dict = w[kCGWindowBounds as String] as? NSDictionary, let rect = CGRect(dictionaryRepresentation: dict) else { return false }
-            return rect.height > 0 && rect.minY >= info.frame.minY - 1 && rect.minY <= info.frame.minY + 1 && rect.width >= info.frame.width - 2
+        var found: Set<CGDirectDisplayID> = []
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID else { continue }
+            // Window bounds are in the global top-left coordinate space, the same one CGDisplayBounds uses.
+            let bounds = CGDisplayBounds(id)
+            let here = all.filter { bounds.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+            // The menu bar window (level 24) sits at the top of the display while it is showing and is moved away in full screen.
+            let menuBarVisible = here.contains { $0.layer == 24 && $0.frame.height > 0 && abs($0.frame.minY - bounds.minY) <= 1 && $0.frame.width >= bounds.width - 2 }
+            let full = FullScreenDetector.isFullScreen(windows: here, frontmostPID: front, screenFrame: bounds, safeAreaTop: screen.safeAreaInsets.top, menuBarVisible: menuBarVisible)
+            if full { found.insert(id) }
         }
-        let full = FullScreenDetector.isFullScreen(windows: windows, frontmostPID: front, screenFrame: info.frame, safeAreaTop: info.safeAreaTop,
-                                                   menuBarVisible: menuBarVisible)
-        if full != isFullScreen { isFullScreen = full; Log.write("fullscreen: \(full)") }
+        if found != displays { displays = found; Log.write("fullscreen displays: \(found.sorted())") }
     }
 }

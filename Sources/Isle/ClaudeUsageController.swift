@@ -8,6 +8,8 @@ import IsleCore
 final class ClaudeUsageController: ObservableObject {
     @Published private(set) var windows: [LimitWindow] = []
     @Published private(set) var failed = false
+    /// No Claude Code sign-in token in the Keychain (signed out), so there is nothing to read until the user runs /login.
+    @Published private(set) var needsSignIn = false
     /// Something is actively spending the Claude usage limit right now (a Claude Code session writing to its log, or the Claude
     /// app in front): the 5-hour limit is shown whatever its level. See `UsageActivity`.
     @Published private(set) var claudeActive = false
@@ -136,6 +138,7 @@ final class ClaudeUsageController: ObservableObject {
             let outcome = await Self.fetch()
             guard let self else { return }
             self.inFlight = false
+            if case .noToken = outcome { self.needsSignIn = true } else { self.needsSignIn = false }
             switch outcome {
             case .ok(let result):
                 self.windows = result

@@ -128,7 +128,7 @@ final class IslandController {
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.privacy.$state.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
-        env.fullScreen.$isFullScreen.removeDuplicates().receive(on: DispatchQueue.main)
+        env.fullScreen.$displays.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
         env.agents.$snapshots.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.updateLive() } }.store(in: &cancellables)
@@ -150,7 +150,7 @@ final class IslandController {
         let quiet = !model.isNotched
         // With the live-items setting off, the notch only widens for Claude usage, while something is actively using Claude.
         let wings = settings.liveWings && !quiet
-        let media = wings && settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen
+        let media = wings && settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen(currentScreenID)
         let privacy = wings && settings.privacyIndicator && env.privacy.state.isActive
         let privacyState = wings ? env.privacy.state : PrivacyState()
         let battery = env.devices.battery
@@ -557,7 +557,7 @@ final class IslandController {
 
     /// A new song started: show the banner once its cover has arrived (or after a short wait).
     func songStarted(_ track: TrackInfo) {
-        guard settings.songBanner, machine.phase == .collapsed, !env.fullScreen.isFullScreen else { return }
+        guard settings.songBanner, machine.phase == .collapsed else { return }
         popups.removeAll(kind: .nowPlaying)
         let item = PopupItem(id: "np-" + track.identity, kind: .nowPlaying, symbol: "music.note", title: track.title, subtitle: track.artist)
         DispatchQueue.main.asyncAfter(deadline: .now() + (env.media.artwork == nil ? 0.5 : 0.05)) { [weak self] in

@@ -415,27 +415,29 @@ struct NowPlayingBanner: View {
     @State private var textIn = false
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 13) {
             Group {
                 if let image = media.artwork {
                     Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
                 } else {
-                    ZStack { Color.white.opacity(0.12); Image(systemName: "music.note").font(.system(size: 11)).foregroundStyle(.white.opacity(0.5)) }
+                    ZStack { Color.white.opacity(0.12); Image(systemName: "music.note").font(.system(size: 20)).foregroundStyle(.white.opacity(0.5)) }
                 }
             }
-            .frame(width: 26, height: 26)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .frame(width: 46, height: 46)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.5), radius: 6, y: 2)
             .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(item.title).font(.system(size: 12, weight: .semibold)).lineLimit(1)
-                Text(item.subtitle).font(.system(size: 10)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                Text(item.subtitle).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.62)).lineLimit(1)
             }
             .opacity(textIn ? 1 : 0)
-            .offset(x: textIn ? 0 : -6)
+            .offset(x: textIn ? 0 : -8)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, model.isNotched ? model.collapsedSize.height + 4 : 12)
+        .padding(.horizontal, 24)
+        .padding(.top, model.isNotched ? model.collapsedSize.height + 6 : 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .foregroundStyle(.white)
         .onAppear {
@@ -721,37 +723,80 @@ struct HUDBar: View {
 
     var body: some View {
         let hud = model.hud
-        HStack(spacing: 14) {
-            Image(systemName: hud.symbol)
-                .font(.system(size: 26))
-                .symbolRenderingMode(.hierarchical)
-                .contentTransition(.symbolEffect(.replace))
-                .frame(width: 40)
-            VStack(alignment: .leading, spacing: 7) {
-                HStack {
-                    Text(hud.title).font(.system(size: 13, weight: .semibold))
-                    Spacer()
-                    Text(hud.muted ? "Muted" : "\(Int((hud.level * 100).rounded()))%")
-                        .font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(.white.opacity(0.65))
-                }
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.18))
-                        Capsule().fill(Color.white).frame(width: max(6, g.size.width * hud.shownLevel))
-                    }
-                }
-                .frame(height: 6)
+        // Modelled on macOS's own HUD: a glyph whose waves/rays fill with the level, a 16-segment bar, and a percentage in a
+        // fixed-width slot so nothing shifts as the number gains a digit.
+        HStack(spacing: 12) {
+            if hud.kind == .brightness || hud.kind == .keyboard {
+                // Brightness is a light, so it gets the iOS Control Center slider: one pill that fills with white, glyph inside.
+                PillLevelSlider(level: hud.shownLevel, symbol: hud.kind == .brightness ? (hud.level < 0.5 ? "sun.min.fill" : "sun.max.fill") : "light.max")
+                    .frame(height: 25)
+            } else {
+                Image(systemName: hud.symbol)
+                    .font(.system(size: 26))
+                    .symbolRenderingMode(.hierarchical)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 40)
+                SegmentedLevelBar(level: hud.shownLevel)
+                    .frame(height: 9)
             }
+            Text(hud.muted ? "Muted" : "\(Int((hud.level * 100).rounded()))%")
+                .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(.white.opacity(hud.muted ? 0.55 : 0.8))
+                .frame(width: 48, alignment: .trailing)
         }
-        .animation(.smooth(duration: 0.22), value: hud.shownLevel)
+        .animation(.smooth(duration: 0.18), value: hud.shownLevel)
         // One element for VoiceOver: "Volume, 40 percent" (or "muted"), instead of an icon, a title and a bare bar.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(hud.title)
         .accessibilityValue(hud.muted ? "Muted" : "\(Int((hud.level * 100).rounded())) percent")
-        .padding(.horizontal, flare + 18)
+        .padding(.horizontal, flare + 24)
         .padding(.top, model.isNotched ? model.collapsedSize.height + 2 : 10)
         .padding(.bottom, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(.white)
+    }
+}
+
+/// Sixteen rounded segments, filled left to right. The segment at the edge of the level fills partway, so the fine steps of
+/// Option+Shift+key show up as well as the whole ones.
+struct SegmentedLevelBar: View {
+    let level: Double
+    private let count = 16
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<count, id: \.self) { i in
+                let fill = min(1, max(0, level * Double(count) - Double(i)))
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.2))
+                        Capsule().fill(Color.white).frame(width: g.size.width * fill)
+                    }
+                }
+            }
+        }
+        .animation(.smooth(duration: 0.18), value: level)
+    }
+}
+
+/// The iOS Control Center slider: a pill that fills with white from the left, with a glyph inside that turns dark where the
+/// fill reaches it.
+struct PillLevelSlider: View {
+    let level: Double
+    let symbol: String
+
+    var body: some View {
+        GeometryReader { g in
+            let fill = g.size.width * min(1, max(0, level))
+            let glyph = Image(systemName: symbol).font(.system(size: 12, weight: .semibold)).padding(.leading, 9)
+            ZStack(alignment: .leading) {
+                Color.white.opacity(0.22)
+                Color.white.frame(width: fill)
+                glyph.foregroundStyle(.white.opacity(0.8))
+                glyph.foregroundStyle(.black.opacity(0.75)).mask(alignment: .leading) { Color.black.frame(width: fill) }
+            }
+            .clipShape(Capsule())
+            .animation(.smooth(duration: 0.16), value: level)
+        }
     }
 }

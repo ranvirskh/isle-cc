@@ -55,12 +55,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         env.downloads.start()
         env.weather.start()
-        env.fullScreen.start { [weak island] in island?.screenInfo ?? ScreenInfo(NSScreen.main ?? NSScreen.screens[0]) }
+        env.fullScreen.start()
         lockController.start()
         Log.write("lock feature: supported=\(lockController.isSupported) \(lockController.unsupportedReason ?? "")")
         setUpStatusItem()
 
         if args.contains("--demo") { env.media.loadDemo() }
+        // `--demo-hud`: steps through the volume / brightness indicator so it can be inspected. Never used otherwise.
+        if args.contains("--demo-hud") {
+            let steps: [HUDState] = [HUDState(kind: .brightness, level: 0.62), HUDState(kind: .volume, level: 0.4), HUDState(kind: .volume, level: 0, muted: true), HUDState(kind: .brightness, level: 1)]
+            for (i, hud) in steps.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3 + Double(i) * 3) { [weak island] in island?.showHUD(hud) }
+            }
+        }
         if let i = args.firstIndex(of: "--expand") {
             let tab = args.indices.contains(i + 1) ? IslandTab(rawValue: args[i + 1]) : nil
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { island.debugExpand(tab: tab) }

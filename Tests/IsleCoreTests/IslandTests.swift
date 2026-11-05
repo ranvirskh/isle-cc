@@ -340,6 +340,10 @@ final class FullScreenDetectorTests: XCTestCase {
         XCTAssertTrue(FullScreenDetector.isFullScreen(windows: [w(5)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33))
     }
 
+    func testWholeScreenWindowIsFullScreenEvenIfTheMenuBarWindowIsStillListed() {
+        XCTAssertTrue(FullScreenDetector.isFullScreen(windows: [w(5)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33, menuBarVisible: true))
+    }
+
     func testWindowBelowTheNotchCountsOnNotchedDisplays() {
         XCTAssertTrue(FullScreenDetector.isFullScreen(windows: [w(5, height: 1084)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 33))
         XCTAssertFalse(FullScreenDetector.isFullScreen(windows: [w(5, height: 1084)], frontmostPID: 5, screenFrame: screen, safeAreaTop: 0))

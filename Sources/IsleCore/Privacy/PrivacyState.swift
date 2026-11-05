@@ -73,12 +73,13 @@ public enum FullScreenDetector {
     /// full-screen Space hides the menu bar, so a visible menu bar means it is not full screen.
     public static func isFullScreen(windows: [Window], frontmostPID: Int32?, screenFrame: CGRect, safeAreaTop: CGFloat,
                                     menuBarVisible: Bool = false) -> Bool {
-        guard let frontmostPID, !menuBarVisible else { return false }
+        guard let frontmostPID else { return false }
         let tolerance: CGFloat = 2
         return windows.contains { w in
             guard w.ownerPID == frontmostPID, w.layer == 0, abs(w.frame.width - screenFrame.width) <= tolerance else { return false }
+            // A window over the menu bar strip can only be full screen, even while the menu bar window is still listed.
             let fullHeight = abs(w.frame.height - screenFrame.height) <= tolerance
-            let belowNotch = safeAreaTop > 0 && abs(w.frame.height - (screenFrame.height - safeAreaTop)) <= tolerance
+            let belowNotch = safeAreaTop > 0 && !menuBarVisible && abs(w.frame.height - (screenFrame.height - safeAreaTop)) <= tolerance
             return fullHeight || belowNotch
         }
     }

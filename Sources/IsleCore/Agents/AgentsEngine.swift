@@ -94,7 +94,12 @@ public final class AgentsEngine {
         /// Written by `Isle --statusline-bridge` when the user opted in to the Claude Code status line bridge.
         public var claudeLimitsFile: URL
 
-        public init(claude: URL, codex: URL, openCode: URL, copilot: URL, claudeLimitsFile: URL, gemini: URL = URL(fileURLWithPath: "/nonexistent/isle-gemini")) {
+        /// OpenCode 2: one SQLite database instead of a JSON file per message (`~/.local/share/opencode/opencode.db`).
+        public var openCodeDatabase: URL
+
+        public init(claude: URL, codex: URL, openCode: URL, copilot: URL, claudeLimitsFile: URL, gemini: URL = URL(fileURLWithPath: "/nonexistent/isle-gemini"),
+                    openCodeDatabase: URL = URL(fileURLWithPath: "/nonexistent/isle-opencode.db")) {
+            self.openCodeDatabase = openCodeDatabase
             self.claude = claude
             self.codex = codex
             self.openCode = openCode
@@ -112,8 +117,24 @@ public final class AgentsEngine {
                 openCode: dataHome.appendingPathComponent("opencode/storage/message"),
                 copilot: home.appendingPathComponent(".copilot/session-state"),
                 claudeLimitsFile: support.appendingPathComponent("Agents/claude-limits.json"),
-                gemini: home.appendingPathComponent(".gemini/tmp")
+                gemini: home.appendingPathComponent(".gemini/tmp"),
+                openCodeDatabase: dataHome.appendingPathComponent("opencode/opencode.db")
             )
+        }
+
+        /// Whether the agent has left anything on this Mac to read.
+        public func exists(_ agent: AgentKind) -> Bool {
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: root(for: agent).path, isDirectory: &isDir), isDir.boolValue { return true }
+            return agent == .openCode && FileManager.default.fileExists(atPath: openCodeDatabase.path)
+        }
+
+        /// What to watch for changes: each agent's folder, plus OpenCode 2's data folder (its database lives next to `storage`).
+        public var watchPaths: [String] {
+            var paths = AgentKind.allCases.filter { FileManager.default.fileExists(atPath: root(for: $0).path) }.map { root(for: $0).path }
+            let dbFolder = openCodeDatabase.deletingLastPathComponent().path
+            if FileManager.default.fileExists(atPath: openCodeDatabase.path), !paths.contains(where: { $0.hasPrefix(dbFolder + "/") }) { paths.append(dbFolder) }
+            return paths
         }
 
         public func root(for agent: AgentKind) -> URL {
@@ -139,6 +160,8 @@ public final class AgentsEngine {
         var plans: [String: String] = [:]
         var lastActivity: [String: Date] = [:]
         var projects: [String: String] = [:]
+        /// OpenCode 2 database: the newest message write (milliseconds) already counted.
+        var openCodeCursor: Int64?
         /// Tasks running at the last save, so a relaunch keeps their real start time.
         var openSessions: [CompletionTracker.OpenSession]?
     }
@@ -164,7 +187,8 @@ public final class AgentsEngine {
     public init(roots: Roots, stateFile: URL?, calendar: Calendar = .current, completionThreshold: TimeInterval = 120) {
         func canon(_ url: URL) -> URL { URL(fileURLWithPath: Self.canonical(url.path)) }
         self.roots = Roots(claude: canon(roots.claude), codex: canon(roots.codex), openCode: canon(roots.openCode),
-                           copilot: canon(roots.copilot), claudeLimitsFile: canon(roots.claudeLimitsFile), gemini: canon(roots.gemini))
+                           copilot: canon(roots.copilot), claudeLimitsFile: canon(roots.claudeLimitsFile), gemini: canon(roots.gemini),
+                           openCodeDatabase: canon(roots.openCodeDatabase))
         self.stateFile = stateFile
         self.calendar = calendar
         self.tracker = CompletionTracker(threshold: completionThreshold)
@@ -206,17 +230,20 @@ public final class AgentsEngine {
 
     // MARK: Detection
 
-    public func isPresent(_ agent: AgentKind) -> Bool {
-        var isDir: ObjCBool = false
-        return fileManager.fileExists(atPath: roots.root(for: agent).path, isDirectory: &isDir) && isDir.boolValue
-    }
+    public func isPresent(_ agent: AgentKind) -> Bool { roots.exists(agent) }
 
     /// Present AND used: the folder exists and at least one session left a trace.
     public func isUsed(_ agent: AgentKind) -> Bool {
         isPresent(agent) && (state.lastActivity[agent.rawValue] != nil || state.usage.hasAnyUsage(agent: agent))
     }
 
+    private func isOpenCodeDatabase(_ path: String) -> Bool {
+        let db = roots.openCodeDatabase.path
+        return path == db || path == db + "-wal"
+    }
+
     public func agent(forPath path: String) -> AgentKind? {
+        if isOpenCodeDatabase(path) { return .openCode }
         for agent in AgentKind.allCases {
             let root = roots.root(for: agent).path
             if path == root || path.hasPrefix(root + "/") { return agent }
@@ -229,7 +256,7 @@ public final class AgentsEngine {
         case .claudeCode, .codex: return path.hasSuffix(".jsonl")
         case .copilot: return path.hasSuffix(".jsonl")
         case .gemini: return path.hasSuffix(".jsonl") && path.contains("/chats/session-")
-        case .openCode: return path.hasSuffix(".json")
+        case .openCode: return path.hasSuffix(".json") || isOpenCodeDatabase(path)
         }
     }
 
@@ -242,6 +269,7 @@ public final class AgentsEngine {
         var notices: [CompletionNotice] = []
         let cutoff = now.addingTimeInterval(-Double(lookbackDays) * 86400)
         for agent in AgentKind.allCases where isPresent(agent) {
+            if agent == .openCode { notices += ingestOpenCodeDatabase(now: now) }
             var newest: (path: String, modified: Date)?
             var recent: [String] = []
             let keys: [URLResourceKey] = [.contentModificationDateKey, .isRegularFileKey]
@@ -279,7 +307,7 @@ public final class AgentsEngine {
             return []
         }
         guard let agent = agent(forPath: path), isSessionFile(path, agent: agent) else { return [] }
-        var notices: [CompletionNotice] = []
+        if isOpenCodeDatabase(path) { return ingestOpenCodeDatabase(now: now) }
         var records: [ParsedRecord] = []
 
         if agent == .openCode {
@@ -306,7 +334,26 @@ public final class AgentsEngine {
             }
             state.cursors[path] = cursor
         }
+        return apply(records, agent: agent, now: now)
+    }
 
+    /// Reads the OpenCode 2 messages written since the last look. Rows are rewritten as a reply streams, and each message's
+    /// usage replaces what was counted for it, so re-reading the newest rows is harmless.
+    private func ingestOpenCodeDatabase(now: Date) -> [CompletionNotice] {
+        let lookback = Int64(now.addingTimeInterval(-Double(lookbackDays) * 86400).timeIntervalSince1970 * 1000)
+        let since = max(state.openCodeCursor ?? 0, lookback)
+        guard let rows = OpenCodeDatabase.messages(at: roots.openCodeDatabase, updatedSince: since) else { return [] }
+        var notices: [CompletionNotice] = []
+        for row in rows {
+            notices += apply(OpenCodeParser.parse(databaseRow: row), agent: .openCode, now: now)
+            state.openCodeCursor = max(state.openCodeCursor ?? 0, row.updatedMillis)
+        }
+        if !rows.isEmpty { dirty = true }
+        return notices
+    }
+
+    private func apply(_ records: [ParsedRecord], agent: AgentKind, now: Date) -> [CompletionNotice] {
+        var notices: [CompletionNotice] = []
         for record in records {
             switch record {
             case .usage(let event):
