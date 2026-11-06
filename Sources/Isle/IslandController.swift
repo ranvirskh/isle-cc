@@ -528,7 +528,7 @@ final class IslandController {
         if item.kind == .external, machine.phase == .popup, model.popup?.id == item.id {
             model.popup = item
             popupTimer?.invalidate()
-            popupTimer = Timer.scheduledTimer(withTimeInterval: Motion.scaled(Motion.popupDuration), repeats: false) { [weak self] _ in
+            popupTimer = Timer.scheduledTimer(withTimeInterval: Self.externalPopupDuration(for: item), repeats: false) { [weak self] _ in
                 MainActor.assumeIsolated { self?.handle(.popupTimerFired) }
             }
             return
@@ -536,6 +536,11 @@ final class IslandController {
         Log.write("popup queued: \(item.kind.rawValue) \(item.title)")
         popups.enqueue(item)
         schedulePopupCheck(delay: 0.05)
+    }
+
+    /// Glance 2's Face ID result is a quick confirmation, not something to read, so it leaves sooner; other apps' alerts keep the usual time.
+    private static func externalPopupDuration(for item: PopupItem) -> TimeInterval {
+        Motion.scaled(item.id.hasPrefix("glance2.") ? 1.8 : Motion.popupDuration)
     }
 
     private func schedulePopupCheck(delay: TimeInterval) {
@@ -559,6 +564,7 @@ final class IslandController {
         case .nowPlaying: machine.popupDuration = Motion.scaled(Motion.bannerDuration)
         case .bluetoothDevice: machine.popupDuration = Motion.scaled(Motion.devicePopupDuration)
         case .usage: machine.popupDuration = Motion.scaled(2.5)
+        case .external: machine.popupDuration = Self.externalPopupDuration(for: item)
         default: machine.popupDuration = Motion.popupDuration
         }
         handle(.popupRequested)
