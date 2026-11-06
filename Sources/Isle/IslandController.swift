@@ -523,6 +523,16 @@ final class IslandController {
     // MARK: Pop-ups
 
     func enqueuePopup(_ item: PopupItem) {
+        // An app-requested pop-up that is already on screen (Glance 2's Face ID going from "Looking for you" to "Unlocked") is updated
+        // where it is, with a fresh timer, instead of being ignored as a duplicate or waiting behind itself.
+        if item.kind == .external, machine.phase == .popup, model.popup?.id == item.id {
+            model.popup = item
+            popupTimer?.invalidate()
+            popupTimer = Timer.scheduledTimer(withTimeInterval: Motion.scaled(Motion.popupDuration), repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.handle(.popupTimerFired) }
+            }
+            return
+        }
         Log.write("popup queued: \(item.kind.rawValue) \(item.title)")
         popups.enqueue(item)
         schedulePopupCheck(delay: 0.05)
