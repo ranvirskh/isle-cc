@@ -538,6 +538,9 @@ final class IslandController {
         schedulePopupCheck(delay: 0.05)
     }
 
+    /// The island's visible shape in screen coordinates (its window is larger: it is sized for the biggest tab plus shadow).
+    var visibleFrame: CGRect { NotchGeometry.topAnchoredFrame(model.screen, size: model.shapeSize) }
+
     /// Glance 2's Face ID result is a quick confirmation, not something to read, so it leaves sooner; other apps' alerts keep the usual time.
     private static func externalPopupDuration(for item: PopupItem) -> TimeInterval {
         Motion.scaled(item.id.hasPrefix("glance2.") ? 1.8 : Motion.popupDuration)

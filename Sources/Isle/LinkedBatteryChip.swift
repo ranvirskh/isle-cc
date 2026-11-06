@@ -9,7 +9,7 @@ struct LinkedBatteryChip: View {
 
     var body: some View {
         if KwikBatteryLauncher.isInstalled {
-            Button { KwikBatteryLauncher.open(anchor: probe.screenRect()) } label: { BatteryChip(state: state) }
+            Button { KwikBatteryLauncher.open(anchor: probe.anchorBelowIsland(visibleIsland: AppDelegate.shared.env.island?.active?.visibleFrame)) } label: { BatteryChip(state: state) }
                 .buttonStyle(PressStyle())
                 .background(ScreenRectProbe(holder: probe))
                 .help("Open KwikBattery")
@@ -27,6 +27,15 @@ struct ScreenRectProbe: NSViewRepresentable {
         func screenRect() -> CGRect? {
             guard let view, let window = view.window else { return nil }
             return window.convertToScreen(view.convert(view.bounds, to: nil))
+        }
+
+        /// A thin strip on the island's visible bottom edge, directly under this view. KwikBattery hangs its panel from it, so the panel drops
+        /// out of the island like a menu instead of overlapping it (the icon is at the top of the island, and the island is drawn
+        /// over anything that hangs from there).
+        func anchorBelowIsland(visibleIsland: CGRect?) -> CGRect? {
+            guard let chip = screenRect(), let window = view?.window else { return nil }
+            // The visible shape's bottom, not the (larger) window's, so there is no gap under a smaller island.
+            return CGRect(x: chip.minX, y: visibleIsland?.minY ?? window.frame.minY, width: chip.width, height: 1)
         }
     }
     let holder: Holder
