@@ -721,24 +721,25 @@ struct HUDBar: View {
     @EnvironmentObject var model: IslandModel
     let flare: CGFloat
 
+    /// Plain filled glyphs: they sit on the pill, so they are drawn without the circle the pop-up icon uses.
+    static func pillSymbol(_ hud: HUDState) -> String {
+        switch hud.kind {
+        case .brightness: return hud.level < 0.5 ? "sun.min.fill" : "sun.max.fill"
+        case .keyboard: return "light.max"
+        case .microphone: return hud.level <= 0 ? "mic.slash.fill" : "mic.fill"
+        case .volume:
+            if hud.muted || hud.level <= 0 { return "speaker.slash.fill" }
+            return hud.level < 1.0 / 3 ? "speaker.wave.1.fill" : hud.level < 2.0 / 3 ? "speaker.wave.2.fill" : "speaker.wave.3.fill"
+        }
+    }
+
     var body: some View {
         let hud = model.hud
-        // Modelled on macOS's own HUD: a glyph whose waves/rays fill with the level, a 16-segment bar, and a percentage in a
-        // fixed-width slot so nothing shifts as the number gains a digit.
+        // The iOS Control Center slider for every indicator: one pill that fills with white, the glyph inside, and a percentage
+        // in a fixed-width slot so nothing shifts as the number gains a digit.
         HStack(spacing: 12) {
-            if hud.kind == .brightness || hud.kind == .keyboard {
-                // Brightness is a light, so it gets the iOS Control Center slider: one pill that fills with white, glyph inside.
-                PillLevelSlider(level: hud.shownLevel, symbol: hud.kind == .brightness ? (hud.level < 0.5 ? "sun.min.fill" : "sun.max.fill") : "light.max")
-                    .frame(height: 25)
-            } else {
-                Image(systemName: hud.symbol)
-                    .font(.system(size: 26))
-                    .symbolRenderingMode(.hierarchical)
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 40)
-                SegmentedLevelBar(level: hud.shownLevel)
-                    .frame(height: 9)
-            }
+            PillLevelSlider(level: hud.shownLevel, symbol: Self.pillSymbol(hud))
+                .frame(height: 25)
             Text(hud.muted ? "Muted" : "\(Int((hud.level * 100).rounded()))%")
                 .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundStyle(.white.opacity(hud.muted ? 0.55 : 0.8))
@@ -754,28 +755,6 @@ struct HUDBar: View {
         .padding(.bottom, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(.white)
-    }
-}
-
-/// Sixteen rounded segments, filled left to right. The segment at the edge of the level fills partway, so the fine steps of
-/// Option+Shift+key show up as well as the whole ones.
-struct SegmentedLevelBar: View {
-    let level: Double
-    private let count = 16
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<count, id: \.self) { i in
-                let fill = min(1, max(0, level * Double(count) - Double(i)))
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.2))
-                        Capsule().fill(Color.white).frame(width: g.size.width * fill)
-                    }
-                }
-            }
-        }
-        .animation(.smooth(duration: 0.18), value: level)
     }
 }
 
