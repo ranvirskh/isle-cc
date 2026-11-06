@@ -382,7 +382,8 @@ struct URLSessionTransport: HTTPTransport {
 }
 
 /// Current audio output, for the output indicator on the Home tab.
-struct OutputDevice: Equatable {
+struct OutputDevice: Equatable, Identifiable {
+    var id: AudioDeviceID = 0
     var name: String
     var symbol: String
 
@@ -394,6 +395,11 @@ struct OutputDevice: Equatable {
         guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &id) == noErr else {
             return OutputDevice(name: "Speakers", symbol: "speaker.wave.2.fill")
         }
+        return describe(id)
+    }
+
+    /// Name and icon for one audio device.
+    static func describe(_ id: AudioDeviceID) -> OutputDevice {
         var nameRef: Unmanaged<CFString>?
         var nsize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
         var naddr = AudioObjectPropertyAddress(mSelector: kAudioObjectPropertyName, mScope: kAudioObjectPropertyScopeGlobal,
@@ -417,7 +423,36 @@ struct OutputDevice: Equatable {
         } else {
             symbol = "speaker.wave.2.fill"
         }
-        return OutputDevice(name: name, symbol: symbol)
+        return OutputDevice(id: id, name: name, symbol: symbol)
+    }
+
+    /// Every device that can play sound, for the output menu. The system's own "default device" aggregate is left out.
+    static func all() -> [OutputDevice] {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal,
+                                              mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(system, &addr, 0, nil, &size) == noErr else { return [] }
+        var ids = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(system, &addr, 0, nil, &size, &ids) == noErr else { return [] }
+        return ids.filter(hasOutput).map(describe).filter { !$0.name.hasPrefix("CADefaultDeviceAggregate") }
+    }
+
+    private static func hasOutput(_ id: AudioDeviceID) -> Bool {
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioObjectPropertyScopeOutput,
+                                              mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        return AudioObjectGetPropertyDataSize(id, &addr, 0, nil, &size) == noErr && size > 0
+    }
+
+    /// Makes `id` the sound output (and the one for alerts), as picking it in System Settings does.
+    static func select(_ id: AudioDeviceID) {
+        var device = id
+        for selector in [kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyDefaultSystemOutputDevice] {
+            var addr = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
+                                                  mElement: kAudioObjectPropertyElementMain)
+            AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, UInt32(MemoryLayout<AudioDeviceID>.size), &device)
+        }
     }
 
     private static var handler: (() -> Void)?

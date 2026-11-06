@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreAudio
 import IsleCore
 
 struct HomeView: View {
@@ -293,14 +294,44 @@ struct ControlsRow: View {
     }
 }
 
+/// The current sound output. Clicking it lists every output so it can be switched, like the output picker in Control Center.
 struct OutputIndicator: View {
     @EnvironmentObject var media: MediaController
     var body: some View {
-        Image(systemName: media.output.symbol)
-            .font(.system(size: 13))
-            .foregroundStyle(.white.opacity(0.5))
-            .help("Playing on \(media.output.name)")
-            .accessibilityLabel("Output: \(media.output.name)")
+        Button { OutputMenu.show(current: media.output.id) } label: {
+            Image(systemName: media.output.symbol)
+                .font(.system(size: 13))
+                .foregroundStyle(.white.opacity(0.6))
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .help("Playing on \(media.output.name). Click to change.")
+        .accessibilityLabel("Output: \(media.output.name)")
+        .accessibilityHint("Shows the available outputs")
+    }
+}
+
+/// The native menu of outputs, popped at the pointer. The island's output indicator follows the system, so picking one updates it.
+@MainActor
+enum OutputMenu {
+    private final class Target: NSObject {
+        @objc func choose(_ sender: NSMenuItem) { OutputDevice.select(AudioDeviceID(sender.tag)) }
+    }
+    private static let target = Target()
+
+    static func show(current: AudioDeviceID) {
+        let menu = NSMenu()
+        for device in OutputDevice.all() {
+            let item = NSMenuItem(title: device.name, action: #selector(Target.choose(_:)), keyEquivalent: "")
+            item.target = target
+            item.tag = Int(device.id)
+            item.image = NSImage(systemSymbolName: device.symbol, accessibilityDescription: nil)
+            item.state = device.id == current ? .on : .off
+            menu.addItem(item)
+        }
+        guard menu.numberOfItems > 0 else { return }
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 }
 
