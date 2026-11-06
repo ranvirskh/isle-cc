@@ -5,7 +5,12 @@ import IsleCore
 /// Everything the island views read. Controllers write it; views never mutate state machines directly.
 @MainActor
 final class IslandModel: ObservableObject {
-    @Published var phase: IslandStateMachine.Phase = .collapsed
+    @Published var phase: IslandStateMachine.Phase = .collapsed {
+        // The battery card is part of the open island: it goes whenever the island does, however the island closes.
+        didSet { if phase != .expanded { showBatterySummary = false } }
+    }
+    /// The brief KwikBattery card (level, time left, power flow) drawn inside the open island from the header's battery chip.
+    @Published var showBatterySummary = false
     @Published var tab: IslandTab = .home
     /// Cursor position over the open island, -1...1 on each axis (0 when parallax is off).
     @Published var parallax = CGSize.zero
@@ -131,6 +136,7 @@ final class AppEnv: ObservableObject {
     let scripts = ScriptsController()
     let updates = UpdateChecker()
     let hud = HUDController()
+    let kwik = KwikBatteryFeed()
     let settings = Settings.shared
     var island: IslandHub!
     var lock: LockController?

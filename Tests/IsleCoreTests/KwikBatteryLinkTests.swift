@@ -2,30 +2,68 @@ import XCTest
 @testable import IsleCore
 
 final class KwikBatteryLinkTests: XCTestCase {
-    func testRequestCarriesTheAnchorRectangle() {
-        let info = KwikBatteryLink.request(anchor: CGRect(x: 100, y: 800, width: 40, height: 14))
+    func testSummaryRequestNamesItsVersionAndSender() {
+        let info = KwikBatteryLink.summaryRequest()
         XCTAssertEqual(info["v"] as? Int, 1)
         XCTAssertEqual(info["source"] as? String, "isle")
-        XCTAssertEqual(info["style"] as? String, "summary")
-        XCTAssertEqual(info["x"] as? Double, 100)
-        XCTAssertEqual(info["y"] as? Double, 800)
-        XCTAssertEqual(info["w"] as? Double, 40)
-        XCTAssertEqual(info["h"] as? Double, 14)
+        XCTAssertEqual(KwikBatteryLink.summaryRequestNotification, "com.kwikbattery.requestSummary")
     }
 
-    func testMessageNamesAreTheAgreedOnes() {
-        XCTAssertEqual(KwikBatteryLink.showPanelNotification, "com.kwikbattery.showPanel")
-        XCTAssertEqual(KwikBatteryLink.hidePanelNotification, "com.kwikbattery.hidePanel")
+    func testASnapshotIsFreshOnlyBrieflyAndOnlyIfThereIsOne() {
+        let now = Date()
+        XCTAssertTrue(KwikBatteryLink.isFresh(receivedAt: now.addingTimeInterval(-3), now: now))
+        XCTAssertTrue(KwikBatteryLink.isFresh(receivedAt: now.addingTimeInterval(-KwikBatteryLink.freshFor), now: now))
+        XCTAssertFalse(KwikBatteryLink.isFresh(receivedAt: now.addingTimeInterval(-KwikBatteryLink.freshFor - 1), now: now))
+        XCTAssertFalse(KwikBatteryLink.isFresh(receivedAt: nil, now: now))
+    }
+}
+
+final class KwikBatterySummaryTests: XCTestCase {
+    private func message(_ overrides: [String: Any] = [:]) -> [AnyHashable: Any] {
+        var m: [String: Any] = ["v": 1, "source": "kwikbattery", "percent": 33, "state": "discharging", "timeTitle": "TIME LEFT",
+                                "timeValue": "56m", "sourceTitle": "Battery", "sourceDetail": "33%", "watts": 14.1]
+        for (k, v) in overrides { m[k] = v }
+        return m
     }
 
-    func testRequestWithoutAUsableAnchorOmitsIt() {
-        for anchor in [nil, CGRect(x: 1, y: 1, width: 0, height: 10), CGRect(x: CGFloat.nan, y: 1, width: 5, height: 5),
-                       CGRect(x: 1, y: CGFloat.infinity, width: 5, height: 5)] {
-            let info = KwikBatteryLink.request(anchor: anchor)
-            XCTAssertEqual(info["v"] as? Int, 1)
-            XCTAssertNil(info["x"])
-            XCTAssertNil(info["w"])
+    func testValidSnapshotParses() {
+        let s = KwikBatterySummary.parse(message())
+        XCTAssertEqual(s, KwikBatterySummary(percent: 33, state: .discharging, timeTitle: "TIME LEFT", timeValue: "56m",
+                                             watts: 14.1, sourceTitle: "Battery", sourceDetail: "33%"))
+    }
+
+    func testWrongSenderVersionOrMissingFieldsAreDropped() {
+        XCTAssertNil(KwikBatterySummary.parse(nil))
+        XCTAssertNil(KwikBatterySummary.parse(message(["source": "glance2"])))
+        XCTAssertNil(KwikBatterySummary.parse(message(["v": 2])))
+        XCTAssertNil(KwikBatterySummary.parse(message(["percent": "33"])))
+        XCTAssertNil(KwikBatterySummary.parse(message(["timeValue": ""])))
+        XCTAssertNil(KwikBatterySummary.parse(message(["sourceTitle": 7])))
+    }
+
+    func testLevelAndStateAreChecked() {
+        XCTAssertNil(KwikBatterySummary.parse(message(["percent": 101])))
+        XCTAssertNil(KwikBatterySummary.parse(message(["percent": -1])))
+        XCTAssertNil(KwikBatterySummary.parse(message(["state": "exploding"])))
+        for state in ["charging", "discharging", "full", "onAC", "noBattery"] {
+            XCTAssertNotNil(KwikBatterySummary.parse(message(["state": state])), state)
         }
+    }
+
+    func testWattsAreOptionalAndMustBeSane() {
+        XCTAssertEqual(KwikBatterySummary.parse(message())?.watts, 14.1)
+        var noWatts = message(); noWatts["watts"] = nil
+        XCTAssertNotNil(KwikBatterySummary.parse(noWatts))
+        XCTAssertNil(KwikBatterySummary.parse(noWatts)?.watts)
+        XCTAssertNil(KwikBatterySummary.parse(message(["watts": Double.nan]))?.watts)
+        XCTAssertNil(KwikBatterySummary.parse(message(["watts": -3.0]))?.watts)
+        XCTAssertNil(KwikBatterySummary.parse(message(["watts": 5_000.0]))?.watts)
+    }
+
+    func testTextIsCleanedAndCut() {
+        let s = KwikBatterySummary.parse(message(["timeValue": "5\n6m", "sourceDetail": String(repeating: "x", count: 40)]))
+        XCTAssertEqual(s?.timeValue, "56m")
+        XCTAssertEqual(s?.sourceDetail.count, 16)
     }
 }
 

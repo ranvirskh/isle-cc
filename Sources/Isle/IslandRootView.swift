@@ -161,6 +161,16 @@ struct ExpandedView: View {
         }
         .animation(Motion.ease(Motion.tabSwitchDuration, .tabs), value: model.tab)
         .animation(Motion.ease(Motion.tabSwitchDuration, .tabs), value: model.showingDropTargets)
+        .overlay(alignment: .topTrailing) {
+            if model.showBatterySummary {
+                KwikBatterySummaryCard(feed: env.kwik)
+                    .padding(.top, model.headerHeight + 2)
+                    .padding(.trailing, flare + 16)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topTrailing)))
+            }
+        }
+        .animation(Motion.ease(0.2, .content), value: model.showBatterySummary)
+        .onChange(of: model.tab) { _, _ in model.showBatterySummary = false }
     }
 }
 

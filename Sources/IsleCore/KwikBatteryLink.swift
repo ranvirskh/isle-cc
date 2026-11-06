@@ -1,28 +1,24 @@
 import Foundation
-import CoreGraphics
 
-/// How Isle asks KwikBattery to open its battery panel from Isle's battery icon.
+/// How Isle gets its battery card from KwikBattery.
 ///
-/// KwikBattery listens for a `DistributedNotificationCenter` notification named `showPanelNotification`. The userInfo carries where
-/// Isle's icon is on screen so KwikBattery can hang its panel from it. Everything is optional for KwikBattery: without a usable
-/// rectangle it just opens the panel from its own menu bar item. Isle only offers this when KwikBattery is installed.
+/// Isle draws the card itself, inside the island, so it opens and closes with the island and looks like the rest of Isle. KwikBattery
+/// only supplies the numbers: Isle posts `summaryRequestNotification` and KwikBattery answers with a `KwikBatterySummary`. Isle only
+/// offers the card when KwikBattery is installed and declares it understands this (see `IslandIntegration`).
 public enum KwikBatteryLink {
     public static let bundleID = "com.kwikbattery.KwikBattery"
-    public static let showPanelNotification = "com.kwikbattery.showPanel"
-    /// Sent when the island closes, so the summary it asked for closes with it.
-    public static let hidePanelNotification = "com.kwikbattery.hidePanel"
+    public static let summaryRequestNotification = "com.kwikbattery.requestSummary"
     public static let version = 1
 
-    /// `anchor` is in AppKit screen coordinates (origin bottom-left of the primary display), like `NSWindow.convertToScreen`.
-    public static func request(anchor: CGRect?) -> [String: Any] {
-        // "summary": just the battery level, time left and power flow, as a brief glance rather than the whole panel.
-        var info: [String: Any] = ["v": version, "source": "isle", "style": "summary"]
-        if let a = anchor, a.origin.x.isFinite, a.origin.y.isFinite, a.width.isFinite, a.height.isFinite, a.width > 0, a.height > 0 {
-            info["x"] = Double(a.origin.x)
-            info["y"] = Double(a.origin.y)
-            info["w"] = Double(a.width)
-            info["h"] = Double(a.height)
-        }
-        return info
+    public static func summaryRequest() -> [String: Any] {
+        ["v": version, "source": "isle"]
+    }
+
+    /// A snapshot older than this is not shown as current: the card says it is reading the battery until a fresh one arrives.
+    public static let freshFor: TimeInterval = 8
+
+    public static func isFresh(receivedAt: Date?, now: Date = Date()) -> Bool {
+        guard let receivedAt else { return false }
+        return now.timeIntervalSince(receivedAt) <= freshFor
     }
 }
