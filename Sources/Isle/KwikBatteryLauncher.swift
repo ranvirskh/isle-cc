@@ -5,7 +5,8 @@ import IsleCore
 @MainActor
 enum KwikBatteryLauncher {
     static var appURL: URL? { NSWorkspace.shared.urlForApplication(withBundleIdentifier: KwikBatteryLink.bundleID) }
-    static var isInstalled: Bool { appURL != nil }
+    /// Installed AND new enough to answer the request: an older KwikBattery would just be launched and then do nothing.
+    static var isInstalled: Bool { appURL.flatMap { Bundle(url: $0)?.infoDictionary }.map { IslandIntegration.supports($0) } ?? false }
     private static var isRunning: Bool { !NSRunningApplication.runningApplications(withBundleIdentifier: KwikBatteryLink.bundleID).isEmpty }
 
     /// Asks KwikBattery to show its panel hanging from `anchor` (screen coordinates). If it isn't running it is started first; the

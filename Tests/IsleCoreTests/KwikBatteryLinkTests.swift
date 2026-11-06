@@ -22,3 +22,15 @@ final class KwikBatteryLinkTests: XCTestCase {
         }
     }
 }
+
+final class IslandIntegrationTests: XCTestCase {
+    func testAnAppSupportsIntegrationOnlyIfItSaysSo() {
+        XCTAssertTrue(IslandIntegration.supports(["IslandIntegration": 1]))
+        XCTAssertTrue(IslandIntegration.supports(["IslandIntegration": 2]))
+        XCTAssertFalse(IslandIntegration.supports(["IslandIntegration": 0]))
+        XCTAssertFalse(IslandIntegration.supports(["IslandIntegration": "1"]))
+        XCTAssertFalse(IslandIntegration.supports([:]))
+        XCTAssertFalse(IslandIntegration.supports(nil))
+        XCTAssertFalse(IslandIntegration.supports(["IslandIntegration": 1], minimum: 2))
+    }
+}
