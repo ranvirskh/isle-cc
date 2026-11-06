@@ -6,10 +6,16 @@ final class KwikBatteryLinkTests: XCTestCase {
         let info = KwikBatteryLink.request(anchor: CGRect(x: 100, y: 800, width: 40, height: 14))
         XCTAssertEqual(info["v"] as? Int, 1)
         XCTAssertEqual(info["source"] as? String, "isle")
+        XCTAssertEqual(info["style"] as? String, "summary")
         XCTAssertEqual(info["x"] as? Double, 100)
         XCTAssertEqual(info["y"] as? Double, 800)
         XCTAssertEqual(info["w"] as? Double, 40)
         XCTAssertEqual(info["h"] as? Double, 14)
+    }
+
+    func testMessageNamesAreTheAgreedOnes() {
+        XCTAssertEqual(KwikBatteryLink.showPanelNotification, "com.kwikbattery.showPanel")
+        XCTAssertEqual(KwikBatteryLink.hidePanelNotification, "com.kwikbattery.hidePanel")
     }
 
     func testRequestWithoutAUsableAnchorOmitsIt() {

@@ -12,6 +12,8 @@ struct LinkedBatteryChip: View {
             Button { KwikBatteryLauncher.open(anchor: probe.anchorBelowIsland(visibleIsland: AppDelegate.shared.env.island?.active?.visibleFrame)) } label: { BatteryChip(state: state) }
                 .buttonStyle(PressStyle())
                 .background(ScreenRectProbe(holder: probe))
+                // The header leaves the screen when the island closes; the summary it opened should go with it.
+                .onDisappear { KwikBatteryLauncher.close() }
                 .help("Open KwikBattery")
                 .accessibilityHint("Opens KwikBattery")
         } else {
