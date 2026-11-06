@@ -12,6 +12,7 @@ public enum SettingsKey {
     public static let hiddenCalendarIDs = "hiddenCalendarIDs"     // [String]
     public static let popupBluetooth = "popupBluetooth"           // default true
     public static let popupPower = "popupPower"                   // default true
+    public static let popupExternal = "popupExternal"             // pop-ups from Glance 2 / KwikBattery, default true
     public static let batteryInHeader = "batteryInHeader"         // default true
     public static let displayChoice = "displayChoice"             // "cursor", "main", or a display UUID
     public static let animationSpeed = "animationSpeed"           // 0.5 ... 2.0, default 1
@@ -75,6 +76,7 @@ public enum SettingsKey {
         hiddenCalendarIDs: [String](),
         popupBluetooth: true,
         popupPower: true,
+        popupExternal: true,
         batteryInHeader: true,
         displayChoice: "cursor",
         animationSpeed: 1.0,

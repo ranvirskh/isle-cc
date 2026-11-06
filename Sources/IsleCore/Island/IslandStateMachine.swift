@@ -167,6 +167,8 @@ public struct IslandStateMachine: Equatable {
 
 public enum PopupKind: String, Codable, CaseIterable {
     case bluetoothDevice, power, agentCompletion, nowPlaying, download, usage, hud
+    /// Asked for by another Isle-family app (see `ExternalPopup`).
+    case external
 }
 
 public struct PopupItem: Equatable, Identifiable {

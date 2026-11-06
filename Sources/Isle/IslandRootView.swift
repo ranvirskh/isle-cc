@@ -218,7 +218,7 @@ struct HeaderView: View {
             HeaderIconButton(symbol: "gearshape.fill", help: "Settings") { AppDelegate.shared.showSettings() }
             if settings.weatherEnabled, let w = weather.reading { WeatherChip(reading: w) }
             if settings.privacyIndicator { PrivacyDots(state: model.privacy) }
-            if settings.batteryInHeader, devices.battery.hasBattery { BatteryChip(state: devices.battery) }
+            if settings.batteryInHeader, devices.battery.hasBattery { LinkedBatteryChip(state: devices.battery) }
     }
 
     private var tabs: [IslandTab] { settings.visibleTabs }

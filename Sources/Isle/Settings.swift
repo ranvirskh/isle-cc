@@ -67,6 +67,10 @@ final class Settings: ObservableObject {
         get { d.bool(forKey: SettingsKey.popupPower) }
         set { set(newValue, SettingsKey.popupPower) }
     }
+    var popupExternal: Bool {
+        get { d.bool(forKey: SettingsKey.popupExternal) }
+        set { set(newValue, SettingsKey.popupExternal) }
+    }
     var batteryInHeader: Bool {
         get { d.bool(forKey: SettingsKey.batteryInHeader) }
         set { set(newValue, SettingsKey.batteryInHeader) }

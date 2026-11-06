@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsWindow: NSWindow?
     private var welcomeWindow: NSWindow?
     private let args = CommandLine.arguments
+    private var externalPopupLimiter = ExternalPopupLimiter()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
@@ -25,6 +26,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         lockController.env = env
 
         env.devices.onPopup = { [weak island] item in island?.enqueuePopup(item) }
+        // Glance 2 (face scan) and KwikBattery (battery events) ask for pop-ups through a distributed notification. Anyone can post
+        // one, so ExternalPopup validates it and the limiter stops a flood.
+        DistributedNotificationCenter.default().addObserver(forName: Notification.Name(ExternalPopup.notificationName), object: nil, queue: .main) { [weak self, weak island] note in
+            MainActor.assumeIsolated {
+                guard let self, self.env.settings.popupExternal, self.externalPopupLimiter.allow(),
+                      let item = ExternalPopup.parse(note.userInfo) else { return }
+                island?.enqueuePopup(item)
+            }
+        }
         env.agents.onNotice = { [weak island] n in
             island?.enqueuePopup(PopupItem(id: n.id, kind: .agentCompletion, symbol: n.agent.symbol,
                                            title: "\(n.agent.displayName) finished",

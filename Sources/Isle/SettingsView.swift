@@ -226,6 +226,7 @@ struct SettingsView: View {
             Section("Pop-ups") {
                 Toggle("Bluetooth device connected", isOn: binding({ settings.popupBluetooth }, { settings.popupBluetooth = $0 }))
                 Toggle("Power adapter connected / disconnected", isOn: binding({ settings.popupPower }, { settings.popupPower = $0 }))
+                Toggle("From Glance 2 and KwikBattery (face scan, battery events)", isOn: binding({ settings.popupExternal }, { settings.popupExternal = $0 }))
                 HStack {
                     Text("To show AirPods only in the notch, turn off Bluetooth notifications in macOS (apps cannot hide that banner themselves).")
                         .font(.caption).foregroundStyle(.secondary)
