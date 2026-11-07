@@ -78,3 +78,58 @@ final class IslandIntegrationTests: XCTestCase {
         XCTAssertFalse(IslandIntegration.supports(["IslandIntegration": 1], minimum: 2))
     }
 }
+
+final class GlanceLinkTests: XCTestCase {
+    private func message(_ overrides: [String: Any] = [:]) -> [AnyHashable: Any] {
+        var m: [String: Any] = ["v": 1, "source": "glance2", "enabled": true, "locked": false, "hasPassword": true,
+                                "history": [["t": 1_700_000_000.0, "place": "Safari", "result": "Unlocked", "ok": true]]]
+        for (k, v) in overrides { m[k] = v }
+        return m
+    }
+
+    func testValidStatusParses() {
+        let s = GlanceStatus.parse(message())
+        XCTAssertEqual(s?.light, .ready)
+        XCTAssertEqual(s?.history.first?.place, "Safari")
+        XCTAssertEqual(s?.history.first?.ok, true)
+    }
+
+    func testLightAndUnlockFollowTheState() {
+        XCTAssertEqual(GlanceStatus.parse(message(["enabled": false]))?.light, .off)
+        let locked = GlanceStatus.parse(message(["locked": true]))
+        XCTAssertEqual(locked?.light, .needsAttention)
+        XCTAssertEqual(locked?.canUnlock, true)
+        let noPassword = GlanceStatus.parse(message(["locked": true, "hasPassword": false]))
+        XCTAssertEqual(noPassword?.light, .needsAttention)
+        XCTAssertEqual(noPassword?.canUnlock, false)
+    }
+
+    func testWrongSenderVersionOrShapeIsDropped() {
+        XCTAssertNil(GlanceStatus.parse(message(["source": "kwikbattery"])))
+        XCTAssertNil(GlanceStatus.parse(message(["v": 2])))
+        XCTAssertNil(GlanceStatus.parse(message(["locked": "yes"])))
+        XCTAssertNil(GlanceStatus.parse(nil))
+    }
+
+    func testHistoryIsCleanedLimitedAndBadEntriesDropped() {
+        let long = String(repeating: "a", count: 200)
+        let entries: [[String: Any]] = [
+            ["t": 1_700_000_000.0, "place": "Safari\n", "result": long, "ok": true],
+            ["t": -5.0, "place": "Notes", "result": "Unlocked", "ok": true],
+            ["t": 1_700_000_001.0, "place": "", "result": "Unlocked", "ok": true],
+            ["t": 1_700_000_002.0, "place": "Notes", "result": "Unlocked"],
+        ]
+        let s = GlanceStatus.parse(message(["history": entries]))
+        XCTAssertEqual(s?.history.count, 1)
+        XCTAssertEqual(s?.history.first?.place, "Safari")
+        XCTAssertEqual(s?.history.first?.result.count, GlanceStatus.maxText)
+
+        let many = (0..<50).map { ["t": 1_700_000_000.0 + Double($0), "place": "P", "result": "R", "ok": true] as [String: Any] }
+        XCTAssertEqual(GlanceStatus.parse(message(["history": many]))?.history.count, GlanceStatus.maxHistory)
+    }
+
+    func testCommandNamesItsVersionAndSender() {
+        XCTAssertEqual(GlanceLink.command()["v"] as? Int, 1)
+        XCTAssertEqual(GlanceLink.command()["source"] as? String, "isle")
+    }
+}

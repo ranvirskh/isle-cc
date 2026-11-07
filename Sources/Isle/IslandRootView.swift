@@ -169,8 +169,17 @@ struct ExpandedView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topTrailing)))
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if model.showGlanceCard {
+                GlanceCard(feed: env.glance)
+                    .padding(.top, model.headerHeight + 2)
+                    .padding(.trailing, flare + 16)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topTrailing)))
+            }
+        }
         .animation(Motion.ease(0.2, .content), value: model.showBatterySummary)
-        .onChange(of: model.tab) { _, _ in model.showBatterySummary = false }
+        .animation(Motion.ease(0.2, .content), value: model.showGlanceCard)
+        .onChange(of: model.tab) { _, _ in model.showBatterySummary = false; model.showGlanceCard = false }
     }
 }
 
@@ -228,6 +237,7 @@ struct HeaderView: View {
             HeaderIconButton(symbol: "gearshape.fill", help: "Settings") { AppDelegate.shared.showSettings() }
             if settings.weatherEnabled, let w = weather.reading { WeatherChip(reading: w) }
             if settings.privacyIndicator { PrivacyDots(state: model.privacy) }
+            if env.glance.isRunning { GlanceChip(feed: env.glance) }
             if settings.batteryInHeader, devices.battery.hasBattery { LinkedBatteryChip(state: devices.battery) }
     }
 

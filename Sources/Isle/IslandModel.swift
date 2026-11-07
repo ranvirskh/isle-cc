@@ -7,8 +7,10 @@ import IsleCore
 final class IslandModel: ObservableObject {
     @Published var phase: IslandStateMachine.Phase = .collapsed {
         // The battery card is part of the open island: it goes whenever the island does, however the island closes.
-        didSet { if phase != .expanded { showBatterySummary = false } }
+        didSet { if phase != .expanded { showBatterySummary = false; showGlanceCard = false } }
     }
+    /// The Glance 2 card (state, Unlock, recent scans) drawn inside the open island from the header's Glance chip.
+    @Published var showGlanceCard = false
     /// The brief KwikBattery card (level, time left, power flow) drawn inside the open island from the header's battery chip.
     @Published var showBatterySummary = false
     @Published var tab: IslandTab = .home
@@ -137,6 +139,7 @@ final class AppEnv: ObservableObject {
     let updates = UpdateChecker()
     let hud = HUDController()
     let kwik = KwikBatteryFeed()
+    let glance = GlanceFeed()
     let settings = Settings.shared
     var island: IslandHub!
     var lock: LockController?

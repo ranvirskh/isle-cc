@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         env.devices.onPopup = { [weak island] item in island?.enqueuePopup(item) }
         env.kwik.start()
+        env.glance.start()
         // Glance 2 (face scan) and KwikBattery (battery events) ask for pop-ups through a distributed notification. Anyone can post
         // one, so ExternalPopup validates it and the limiter stops a flood.
         DistributedNotificationCenter.default().addObserver(forName: Notification.Name(ExternalPopup.notificationName), object: nil, queue: .main) { [weak self, weak island] note in

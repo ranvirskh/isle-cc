@@ -10,6 +10,7 @@ struct LinkedBatteryChip: View {
     var body: some View {
         if KwikBatteryFeed.isInstalled {
             Button {
+                model.showGlanceCard = false
                 model.showBatterySummary.toggle()
                 if model.showBatterySummary { env.kwik.requestSummary() }
             } label: { BatteryChip(state: state) }
