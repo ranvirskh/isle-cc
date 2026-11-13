@@ -96,6 +96,9 @@ final class IslandModel: ObservableObject {
 
 
     var isNotched: Bool { screen.hasNotch }
+    /// Draw the island while idle: always on a notch, on a notchless display only if the user chose the pill.
+    @Published var idlePill = false
+    var showsIdle: Bool { screen.hasNotch || idlePill }
 }
 
 extension ScreenInfo {

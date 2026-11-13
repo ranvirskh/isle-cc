@@ -257,6 +257,10 @@ final class Settings: ObservableObject {
         get { d.bool(forKey: SettingsKey.privacyIndicator) }
         set { set(newValue, SettingsKey.privacyIndicator) }
     }
+    var idlePill: Bool {
+        get { d.bool(forKey: SettingsKey.idlePill) }
+        set { set(newValue, SettingsKey.idlePill) }
+    }
     var liveWings: Bool {
         get { d.bool(forKey: SettingsKey.liveWings) }
         set { set(newValue, SettingsKey.liveWings) }

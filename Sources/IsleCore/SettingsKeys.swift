@@ -41,6 +41,7 @@ public enum SettingsKey {
     public static let chargingIndicator = "chargingIndicator"     // ChargingIndicatorMode, default whileCharging
     public static let privacyIndicator = "privacyIndicator"       // mic / camera / screen recording dots, default true
     public static let liveWings = "liveWings"                     // widen the notch for live items (cover, charging, ...), default false
+    public static let idlePill = "idlePill"                       // draw the pill while idle on displays without a notch, default false
     public static let liveActivity = "liveActivity"               // cover + equalizer beside the notch while playing, default true
     public static let songBanner = "songBanner"                   // default true
     public static let hiddenDisplays = "hiddenDisplays"           // comma-separated display UUIDs the island is hidden on
@@ -101,6 +102,7 @@ public enum SettingsKey {
         chargingIndicator: ChargingIndicatorMode.brief.rawValue,
         privacyIndicator: true,
         liveWings: false,
+        idlePill: false,
         liveActivity: true,
         songBanner: true,
         externalDisplays: false,

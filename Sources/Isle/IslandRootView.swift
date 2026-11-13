@@ -60,7 +60,7 @@ struct IslandRootView: View {
                 IslandShape(flare: flare, bottom: bottom)
                     .fill(style.background)
                     // Without a notch the idle island is fully invisible; it fades in when hovered or showing a pop-up.
-                    .opacity(!model.isNotched && model.phase == .collapsed ? 0 : 1)
+                    .opacity(!model.showsIdle && model.phase == .collapsed ? 0 : 1)
                     .animation(Motion.ease(0.15, .content), value: model.phase)
                     .overlay(GlossOverlay(flare: flare, bottom: bottom).opacity(style.hasGloss && model.phase != .collapsed ? 1 : 0))
                     .shadow(color: .black.opacity(model.phase == .collapsed ? 0 : 0.4), radius: 10, x: 0, y: 4)

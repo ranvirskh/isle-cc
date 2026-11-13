@@ -147,7 +147,8 @@ final class IslandController {
     private func updateLive() {
         // Without a notch there is nothing to hide inside, so the idle island is invisible: no passive items at all.
         // It only appears when hovered/clicked, or for event pop-ups (volume, song change, task finished).
-        let quiet = !model.isNotched
+        model.idlePill = settings.idlePill
+        let quiet = !model.showsIdle
         // With the live-items setting off, the notch only widens for Claude usage, while something is actively using Claude.
         let wings = settings.liveWings && !quiet
         let media = wings && settings.liveActivity && (env.media.now?.isPlaying ?? false) && !env.fullScreen.isFullScreen(currentScreenID)
